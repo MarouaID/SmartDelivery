@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Smart Delivery</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-truck"></i>
+                <span>Smart Delivery</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/">Accueil</a></li>
+                <li><a href="/dashboard" class="active">Dashboard</a></li>
+                <li><a href="/carte">Carte</a></li>
+                <li><a href="/livreurs">Livreurs</a></li>
+                <li><a href="/commandes">Commandes</a></li>
+                <li><a href="/suivi">Suivi Temps Réel</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <h1>📊 Dashboard</h1>
+            <button class="btn btn-primary" onclick="rafraichirDonnees()">
+                <i class="fas fa-sync"></i> Rafraîchir
+            </button>
+        </div>
+
+        <!-- Cartes de statistiques -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-details">
+                    <h3 id="stat-livreurs">0</h3>
+                    <p>Livreurs Actifs</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon orange">
+                    <i class="fas fa-box"></i>
+                </div>
+                <div class="stat-details">
+                    <h3 id="stat-commandes">0</h3>
+                    <p>Commandes</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fas fa-route"></i>
+                </div>
+                <div class="stat-details">
+                    <h3 id="stat-distance">0 km</h3>
+                    <p>Distance Totale</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon red">
+                    <i class="fas fa-euro-sign"></i>
+                </div>
+                <div class="stat-details">
+                    <h3 id="stat-cout">0 €</h3>
+                    <p>Coût Total</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Graphiques -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>📈 Répartition des Commandes par Livreur</h3>
+                <canvas id="chartCommandes"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <h3>⏱️ Temps de Livraison par Trajet</h3>
+                <canvas id="chartTemps"></canvas>
+            </div>
+        </div>
+
+        <!-- Tableau des trajets -->
+        <div class="table-card">
+            <h3>🚚 Liste des Trajets</h3>
+            <div class="table-actions">
+                <input type="text" placeholder="Rechercher..." id="search-trajets" class="search-input">
+                <button class="btn btn-secondary" onclick="exporterCSV()">
+                    <i class="fas fa-file-csv"></i> Exporter CSV
+                </button>
+            </div>
+            <table class="data-table" id="table-trajets">
+                <thead>
+                    <tr>
+                        <th>Livreur</th>
+                        <th>Commandes</th>
+                        <th>Distance (km)</th>
+                        <th>Temps (min)</th>
+                        <th>Coût (€)</th>
+                        <th>Départ</th>
+                        <th>Retour</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-trajets">
+                    <!-- Rempli dynamiquement -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        let chartCommandes, chartTemps;
+
+        async function chargerDashboard() {
+            try {
+                // Charger les statistiques
+                const statsRes = await fetch('/api/statistiques');
+                const stats = await statsRes.json();
+
+                document.getElementById('stat-livreurs').textContent = stats.livreurs_total || 0;
+                document.getElementById('stat-commandes').textContent = stats.commandes_total || 0;
+                document.getElementById('stat-distance').textContent = (stats.distance_totale_km || 0).toFixed(2) + ' km';
+                document.getElementById('stat-cout').textContent = (stats.cout_total_euro || 0).toFixed(2) + ' €';
+
+                // Charger les trajets
+                const trajetsRes = await fetch('/api/trajets');
+                const trajetsData = await trajetsRes.json();
+                const trajets = trajetsData.trajets || {};
+
+                afficherTrajets(trajets);
+                creerGraphiques(trajets);
+
+            } catch (error) {
+                console.error('Erreur chargement dashboard:', error);
+            }
+        }
+
+        function afficherTrajets(trajets) {
+            const tbody = document.getElementById('tbody-trajets');
+            tbody.innerHTML = '';
+
+            for (const [livreurId, trajet] of Object.entries(trajets)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${livreurId}</strong></td>
+                    <td>${trajet.commandes.length}</td>
+                    <td>${trajet.metriques.distance_km}</td>
+                    <td>${trajet.metriques.temps_minutes}</td>
+                    <td>${trajet.metriques.cout_euro}</td>
+                    <td>${trajet.horaires.depart}</td>
+                    <td>${trajet.horaires.retour_estime}</td>
+                    <td>
+                        <button class="btn-small" onclick="voirDetails('${livreurId}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        function creerGraphiques(trajets) {
+            // Graphique des commandes
+            const livreurs = Object.keys(trajets);
+            const nbCommandes = livreurs.map(l => trajets[l].commandes.length);
+
+            const ctxCommandes = document.getElementById('chartCommandes').getContext('2d');
+            if (chartCommandes) chartCommandes.destroy();
+            
+            chartCommandes = new Chart(ctxCommandes, {
+                type: 'bar',
+                data: {
+                    labels: livreurs,
+                    datasets: [{
+                        label: 'Nombre de Commandes',
+                        data: nbCommandes,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Graphique des temps
+            const temps = livreurs.map(l => trajets[l].metriques.temps_minutes);
+
+            const ctxTemps = document.getElementById('chartTemps').getContext('2d');
+            if (chartTemps) chartTemps.destroy();
+            
+            chartTemps = new Chart(ctxTemps, {
+                type: 'line',
+                data: {
+                    labels: livreurs,
+                    datasets: [{
+                        label: 'Temps (minutes)',
+                        data: temps,
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function voirDetails(livreurId) {
+            window.location.href = `/livreurs?id=${livreurId}`;
+        }
+
+        function rafraichirDonnees() {
+            chargerDashboard();
+        }
+
+        async function exporterCSV() {
+            window.location.href = '/api/export/csv';
+        }
+
+        // Recherche dans le tableau
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('search-trajets');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const terme = e.target.value.toLowerCase();
+                    const rows = document.querySelectorAll('#tbody-trajets tr');
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        row.style.display = text.includes(terme) ? '' : 'none';
+                    });
+                });
+            }
+        });
+
+        // Charger au démarrage
+        chargerDashboard();
+    </script>
+</body>
+</html>
