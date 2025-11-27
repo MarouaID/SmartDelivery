@@ -1,0 +1,32 @@
+{
+  "application": {
+    "name": "Smart Delivery",
+    "version": "1.0.0",
+    "debug": true
+  },
+  "optimisation": {
+    "algorithme_affectation": "glouton",
+    "algorithme_routing": "nearest_neighbor",
+    "seuil_score_min": 0.3,
+    "iterations_optimisation": 100
+  },
+  "contraintes": {
+    "fenetre_horaire_stricte": true,
+    "capacite_stricte": true,
+    "duree_travail_max_minutes": 600
+  },
+  "simulation": {
+    "centre_latitude": 48.8566,
+    "centre_longitude": 2.3522,
+    "rayon_zone_km": 20
+  },
+  "notifications": {
+    "activer_websocket": true,
+    "activer_email": false,
+    "port_websocket": 5001
+  },
+  "interface": {
+    "port_web": 5000,
+    "host": "0.0.0.0"
+  }
+}
