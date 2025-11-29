@@ -87,3 +87,19 @@ class ConfigLoader:
         """Sauvegarde la configuration"""
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
+def load_json(path: str) -> dict:
+    """
+    Charge un fichier JSON situé dans le projet.
+    Le chemin doit être relatif à la racine (exemple : 'data/commandes_exemple.json').
+    """
+    import os
+
+    base_dir = os.path.dirname(os.path.dirname(__file__))  
+    full_path = os.path.join(base_dir, path)
+
+    if not os.path.exists(full_path):
+        raise FileNotFoundError(f"❌ Fichier introuvable : {full_path}")
+
+    with open(full_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
