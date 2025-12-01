@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Delivery - Accueil</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-truck"></i>
+                <span>Smart Delivery</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="active">Accueil</a></li>
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/carte">Carte</a></li>
+                <li><a href="/livreurs">Livreurs</a></li>
+                <li><a href="/commandes">Commandes</a></li>
+                <li><a href="/suivi">Suivi Temps Réel</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>🚚 Smart Delivery</h1>
+            <p class="subtitle">Système Intelligent d'Optimisation de Livraisons</p>
+            <p class="description">
+                Optimisez vos tournées de livraison avec notre algorithme IA.
+                Réduisez les coûts, minimisez les distances et respectez les contraintes horaires.
+            </p>
+            <div class="hero-buttons">
+                <a href="/dashboard" class="btn btn-primary">
+                    <i class="fas fa-chart-line"></i> Ouvrir le Dashboard
+                </a>
+                <button class="btn btn-secondary" onclick="lancerDemo()">
+                    <i class="fas fa-play"></i> Lancer une Démo
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="container">
+            <h2>✨ Fonctionnalités</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <h3>Optimisation des Trajets</h3>
+                    <p>Algorithmes avancés (TSP, génétique) pour minimiser la distance et le temps</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Affectation Intelligente</h3>
+                    <p>Assignation automatique des commandes aux livreurs selon leurs capacités</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3>Respect des Contraintes</h3>
+                    <p>Fenêtres horaires, capacités véhicules, durée de travail</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </div>
+                    <h3>Carte Interactive</h3>
+                    <p>Visualisation en temps réel des trajets et positions des livreurs</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <h3>Notifications</h3>
+                    <p>Alertes en temps réel pour les livreurs et responsables</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3>Rapports & Analytics</h3>
+                    <p>Statistiques détaillées et exports CSV/JSON</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="demo-section">
+        <div class="container">
+            <h2>🎮 Lancer une Simulation</h2>
+            <div class="demo-form">
+                <div class="form-group">
+                    <label for="nb-livreurs">Nombre de Livreurs</label>
+                    <input type="number" id="nb-livreurs" value="5" min="1" max="20">
+                </div>
+                <div class="form-group">
+                    <label for="nb-commandes">Nombre de Commandes</label>
+                    <input type="number" id="nb-commandes" value="20" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <label for="scenario">Scénario</label>
+                    <select id="scenario">
+                        <option value="normal">Normal</option>
+                        <option value="pic">Pic d'Activité</option>
+                        <option value="incident">Avec Incidents</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="lancerOptimisation()">
+                    <i class="fas fa-rocket"></i> Optimiser
+                </button>
+            </div>
+            <div id="resultat-demo" class="demo-result"></div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Smart Delivery - Projet d'Optimisation de Livraisons</p>
+            <p>Développé par l'équipe Smart Delivery (7 membres)</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        async function lancerDemo() {
+            window.location.href = '/dashboard';
+        }
+
+        async function lancerOptimisation() {
+            const nbLivreurs = document.getElementById('nb-livreurs').value;
+            const nbCommandes = document.getElementById('nb-commandes').value;
+            const scenario = document.getElementById('scenario').value;
+            const resultDiv = document.getElementById('resultat-demo');
+
+            resultDiv.innerHTML = '<div class="loading">⏳ Optimisation en cours...</div>';
+
+            try {
+                const response = await fetch('/api/optimiser', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nb_livreurs: parseInt(nbLivreurs),
+                        nb_commandes: parseInt(nbCommandes),
+                        scenario: scenario
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ Optimisation Réussie !</h3>
+                            <p><strong>Trajets créés:</strong> ${data.nb_trajets}</p>
+                            <p><strong>Score d'optimisation:</strong> ${data.score.toFixed(2)}</p>
+                            <a href="/dashboard" class="btn btn-primary">Voir le Dashboard</a>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Erreur: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erreur de connexion</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
