@@ -1,156 +1,88 @@
-"""
-Gestion de l'affectation des commandes aux livreurs
-Algorithmes: Glouton, Hongrois
-Responsable: Personne 1
-"""
+# src/affectation/affectation_manager.py
 
-from typing import List, Dict, Tuple
+from typing import List, Dict
+import numpy as np
 from src.models import Commande, Livreur
 from src.utils import DistanceCalculator
-import numpy as np
+from src.affectation.branch_and_bound_allocator import BranchAndBoundAllocator
 
 
 class AffectationManager:
-    """Gère l'affectation optimale des commandes aux livreurs"""
-    
+
     def __init__(self):
-        self.distance_calc = DistanceCalculator()
-        self.affectations = {}
-        self.capacites_restantes = {}
-        self.scores_affectation = {}
-    
-    def calculer_score_affectation(self, livreur: Livreur, commande: Commande) -> float:
-        """
-        Calcule un score d'affectation [0, 1] basé sur:
-        - Distance livreur-commande (40%)
-        - Priorité de la commande (30%)
-        - Capacité disponible du livreur (30%)
-        
-        Plus le score est élevé, meilleure est l'affectation
-        """
-        # Score de distance (inverse)
-        distance = self.distance_calc.haversine(
+        self.dist = DistanceCalculator()
+
+    # -------------------------------
+    # SCORE [0 – 1]
+    # -------------------------------
+    def score(self, livreur: Livreur, commande: Commande) -> float:
+
+        if not livreur.disponible:
+            return 0
+
+        if commande.poids > livreur.capacite_poids or commande.volume > livreur.capacite_volume:
+            return 0
+
+        d = self.dist.haversine(
             livreur.latitude_depart, livreur.longitude_depart,
             commande.latitude, commande.longitude
         )
-        score_distance = 1 / (1 + distance)
-        
-        # Score de priorité (urgent = meilleur)
+
+        score_distance = 1 / (1 + d)
         score_priorite = (4 - commande.priorite) / 3
-        
-        # Score de capacité (vérifier qu'on peut livrer)
-        cap_restante = self.capacites_restantes.get(livreur.id, {
-            'poids': livreur.capacite_poids,
-            'volume': livreur.capacite_volume
-        })
-        
-        if cap_restante['poids'] < commande.poids or cap_restante['volume'] < commande.volume:
-            return 0.0  # Impossible
-        
-        score_capacite = min(
-            cap_restante['poids'] / commande.poids,
-            cap_restante['volume'] / commande.volume
-        )
-        
-        # Score global pondéré
-        score_final = (0.4 * score_distance + 
-                      0.3 * score_priorite + 
-                      0.3 * min(score_capacite, 1.0))
-        
-        return score_final
-    
-    def _initialiser_capacites(self, livreurs: List[Livreur]):
-        """Initialise les capacités restantes pour chaque livreur"""
-        self.capacites_restantes = {
-            l.id: {
-                'poids': l.capacite_poids,
-                'volume': l.capacite_volume
-            }
-            for l in livreurs
+
+        return 0.6 * score_distance + 0.4 * score_priorite
+
+    # -------------------------------
+    # MATRICE DE COÛT
+    # -------------------------------
+    def create_cost_matrix(self, livreurs: List[Livreur], commandes: List[Commande]):
+
+        L = len(livreurs)
+        C = len(commandes)
+
+        nb_cols = max(L, C) + 3  # ≈ plus stable
+
+        matrix = np.full((L, nb_cols), 9999.0)
+
+        for i, l in enumerate(livreurs):
+            for j, c in enumerate(commandes):
+
+                s = self.score(l, c)
+
+                if s > 0:
+                    matrix[i][j] = 1 - s  # coût faible si bon score
+
+            # Colonnes fictives
+            for j in range(C, nb_cols):
+                matrix[i][j] = 1.2
+
+        return matrix
+
+    # -------------------------------
+    # BRANCH & BOUND
+    # -------------------------------
+    def affecter_commandes_branch_and_bound(self, livreurs, commandes):
+
+        cost_matrix = self.create_cost_matrix(livreurs, commandes)
+
+        allocator = BranchAndBoundAllocator(cost_matrix)
+        assignment, total_cost = allocator.solve()
+
+        affectations = {l.id: [] for l in livreurs}
+        used = set()
+
+        for i_liv, col in enumerate(assignment):
+
+            if col < len(commandes):
+                affectations[livreurs[i_liv].id].append(commandes[col])
+                used.add(col)
+
+        # commandes non assignées
+        non_affectees = [c for k, c in enumerate(commandes) if k not in used]
+
+        return {
+            "affectations": affectations,
+            "non_affectees": non_affectees,
+            "total_cost": total_cost
         }
-    
-    def affecter_commandes_glouton(self, livreurs: List[Livreur], 
-                                   commandes: List[Commande]) -> Dict[str, List[Commande]]:
-        """
-        Algorithme glouton d'affectation:
-        1. Trier les commandes par priorité
-        2. Pour chaque commande, choisir le meilleur livreur disponible
-        3. Affecter et mettre à jour les capacités
-        
-        Retourne: Dict[livreur_id] -> List[Commande]
-        """
-        self._initialiser_capacites(livreurs)
-        self.affectations = {l.id: [] for l in livreurs}
-        self.scores_affectation = {}
-        
-        # Trier par priorité (1=urgent avant 3=flexible)
-        commandes_triees = sorted(commandes, key=lambda c: c.priorite)
-        
-        for commande in commandes_triees:
-            meilleur_livreur = None
-            meilleur_score = -1
-            
-            for livreur in livreurs:
-                if not livreur.disponible:
-                    continue
-                
-                score = self.calculer_score_affectation(livreur, commande)
-                
-                if score > meilleur_score:
-                    meilleur_score = score
-                    meilleur_livreur = livreur
-            
-            # Affecter si un livreur valide trouvé
-            if meilleur_livreur and meilleur_score > 0:
-                self.affectations[meilleur_livreur.id].append(commande)
-                self.scores_affectation[commande.id] = meilleur_score
-                
-                # Réduire les capacités
-                self.capacites_restantes[meilleur_livreur.id]['poids'] -= commande.poids
-                self.capacites_restantes[meilleur_livreur.id]['volume'] -= commande.volume
-                
-                commande.statut = "assignee"
-            else:
-                print(f"⚠️ Impossible d'affecter la commande {commande.id}")
-        
-        return self.affectations
-    
-    def creer_matrice_couts(self, livreurs: List[Livreur], 
-                           commandes: List[Commande]) -> np.ndarray:
-        """
-        Crée une matrice de coûts pour l'algorithme hongrois
-        matrice[i][j] = coût d'affecter commande j au livreur i
-        """
-        n_livreurs = len(livreurs)
-        n_commandes = len(commandes)
-        
-        # Matrice carrée (compléter avec des valeurs infinies si besoin)
-        taille = max(n_livreurs, n_commandes)
-        matrice = np.full((taille, taille), 1e6)  # Valeur très élevée
-        
-        for i, livreur in enumerate(livreurs):
-            for j, commande in enumerate(commandes):
-                score = self.calculer_score_affectation(livreur, commande)
-                # Convertir score [0,1] en coût (inverser)
-                matrice[i][j] = 1 - score if score > 0 else 1e6
-        
-        return matrice
-    
-    def obtenir_statistiques(self) -> dict:
-        """Retourne les statistiques d'affectation"""
-        total_commandes_affectees = sum(len(cmds) for cmds in self.affectations.values())
-        
-        stats = {
-            'total_commandes_affectees': total_commandes_affectees,
-            'livreurs_utilises': sum(1 for cmds in self.affectations.values() if len(cmds) > 0),
-            'score_moyen': np.mean(list(self.scores_affectation.values())) if self.scores_affectation else 0,
-            'repartition': {
-                livreur_id: len(cmds) 
-                for livreur_id, cmds in self.affectations.items()
-            }
-        }
-        
-        return stats
-    
-    def __repr__(self):
-        return f"AffectationManager(affectations={len(self.affectations)})"
