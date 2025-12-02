@@ -1,267 +1,307 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Carte - Smart Delivery</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        #map {
-            height: calc(100vh - 60px);
-            width: 100%;
-        }
-        .map-controls {
-            position: absolute;
-            top: 80px;
-            left: 20px;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 1000;
-            max-width: 250px;
-        }
-        .map-legend {
-            position: absolute;
-            bottom: 30px;
-            left: 20px;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 1000;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin: 8px 0;
-        }
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            border-radius: 3px;
-        }
+      #map {
+        height: calc(100vh - 60px);
+        width: 100%;
+      }
+      .map-controls {
+        position: absolute;
+        top: 80px;
+        left: 20px;
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        max-width: 250px;
+      }
+      .map-legend {
+        position: absolute;
+        bottom: 30px;
+        left: 20px;
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin: 8px 0;
+      }
+      .legend-color {
+        width: 20px;
+        height: 20px;
+        margin-right: 10px;
+        border-radius: 3px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <nav class="navbar">
-        <div class="nav-container">
-            <div class="logo">
-                <i class="fas fa-truck"></i>
-                <span>Smart Delivery</span>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="/">Accueil</a></li>
-                <li><a href="/dashboard">Dashboard</a></li>
-                <li><a href="/carte" class="active">Carte</a></li>
-                <li><a href="/livreurs">Livreurs</a></li>
-                <li><a href="/commandes">Commandes</a></li>
-                <li><a href="/suivi">Suivi Temps Réel</a></li>
-            </ul>
+      <div class="nav-container">
+        <div class="logo">
+          <i class="fas fa-truck"></i>
+          <span>Smart Delivery</span>
         </div>
+        <ul class="nav-menu">
+          <li><a href="/">Accueil</a></li>
+          <li><a href="/dashboard">Dashboard</a></li>
+          <li><a href="/carte" class="active">Carte</a></li>
+          <li><a href="/livreurs">Livreurs</a></li>
+          <li><a href="/commandes">Commandes</a></li>
+          <li><a href="/suivi">Suivi Temps Réel</a></li>
+        </ul>
+      </div>
     </nav>
 
     <div class="map-controls">
-        <h3>🗺️ Contrôles</h3>
-        <div class="form-group">
-            <label>
-                <input type="checkbox" id="show-trajets" checked> Trajets
-            </label>
-        </div>
-        <div class="form-group">
-            <label>
-                <input type="checkbox" id="show-commandes" checked> Commandes
-            </label>
-        </div>
-        <div class="form-group">
-            <label>
-                <input type="checkbox" id="show-depots" checked> Dépôts
-            </label>
-        </div>
-        <button class="btn btn-small" onclick="centrerCarte()">
-            <i class="fas fa-crosshairs"></i> Centrer
-        </button>
+      <h3>🗺️ Contrôles</h3>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="show-trajets" checked /> Trajets
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="show-commandes" checked /> Commandes
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="show-depots" checked /> Dépôts
+        </label>
+      </div>
+      <button class="btn btn-small" onclick="centrerCarte()">
+        <i class="fas fa-crosshairs"></i> Centrer
+      </button>
     </div>
 
     <div class="map-legend">
-        <h4>Légende</h4>
-        <div class="legend-item">
-            <div class="legend-color" style="background: #FF4444;"></div>
-            <span>Urgent</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background: #FFA500;"></div>
-            <span>Normal</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background: #4CAF50;"></div>
-            <span>Flexible</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background: #2196F3; border-radius: 50%;"></div>
-            <span>Dépôt</span>
-        </div>
+      <h4>Légende</h4>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #ff4444"></div>
+        <span>Urgent</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #ffa500"></div>
+        <span>Normal</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #4caf50"></div>
+        <span>Flexible</span>
+      </div>
+      <div class="legend-item">
+        <div
+          class="legend-color"
+          style="background: #2196f3; border-radius: 50%"
+        ></div>
+        <span>Dépôt</span>
+      </div>
     </div>
 
     <div id="map"></div>
 
     <script>
-        let map;
-        let markersCommandes = [];
-        let markersDepots = [];
-        let polylinesTrajets = [];
+      let map;
+      let markersCommandes = [];
+      let markersDepots = [];
+      let polylinesTrajets = [];
 
-        function initialiserCarte() {
-            // Centrer sur Paris par défaut
-            map = L.map('map').setView([48.8566, 2.3522], 12);
+      function initialiserCarte() {
+        // Centrer sur Paris par défaut
+        map = L.map("map").setView([48.8566, 2.3522], 12);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+        }).addTo(map);
 
-            chargerDonnees();
+        chargerDonnees();
+      }
+
+      async function chargerDonnees() {
+        try {
+          // Charger commandes
+          const commandesRes = await fetch("/api/commandes");
+          const commandesData = await commandesRes.json();
+          const commandes = commandesData.commandes || [];
+
+          // Charger livreurs
+          const livreursRes = await fetch("/api/livreurs");
+          const livreursData = await livreursRes.json();
+          const livreurs = livreursData.livreurs || [];
+
+          // Charger trajets
+          const trajetsRes = await fetch("/api/trajets");
+          const trajetsData = await trajetsRes.json();
+          const trajets = trajetsData.trajets || {};
+
+          afficherCommandes(commandes);
+          afficherDepots(livreurs);
+          afficherTrajets(trajets);
+        } catch (error) {
+          console.error("Erreur chargement carte:", error);
         }
+      }
 
-        async function chargerDonnees() {
-            try {
-                // Charger commandes
-                const commandesRes = await fetch('/api/commandes');
-                const commandesData = await commandesRes.json();
-                const commandes = commandesData.commandes || [];
+      function afficherCommandes(commandes) {
+        const couleursPriorite = {
+          1: "#FF4444",
+          2: "#FFA500",
+          3: "#4CAF50",
+        };
 
-                // Charger livreurs
-                const livreursRes = await fetch('/api/livreurs');
-                const livreursData = await livreursRes.json();
-                const livreurs = livreursData.livreurs || [];
-
-                // Charger trajets
-                const trajetsRes = await fetch('/api/trajets');
-                const trajetsData = await trajetsRes.json();
-                const trajets = trajetsData.trajets || {};
-
-                afficherCommandes(commandes);
-                afficherDepots(livreurs);
-                afficherTrajets(trajets);
-
-            } catch (error) {
-                console.error('Erreur chargement carte:', error);
+        commandes.forEach((cmd) => {
+          const couleur = couleursPriorite[cmd.priorite] || "#999";
+          const marker = L.circleMarker(
+            [cmd.position.latitude, cmd.position.longitude],
+            {
+              radius: 8,
+              fillColor: couleur,
+              color: "#fff",
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.8,
             }
-        }
-
-        function afficherCommandes(commandes) {
-            const couleursPriorite = {
-                1: '#FF4444',
-                2: '#FFA500',
-                3: '#4CAF50'
-            };
-
-            commandes.forEach(cmd => {
-                const couleur = couleursPriorite[cmd.priorite] || '#999';
-                const marker = L.circleMarker([cmd.position.latitude, cmd.position.longitude], {
-                    radius: 8,
-                    fillColor: couleur,
-                    color: '#fff',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).bindPopup(`
+          )
+            .bindPopup(
+              `
                     <b>${cmd.id}</b><br>
                     ${cmd.adresse}<br>
                     Priorité: ${cmd.priorite}<br>
                     Fenêtre: ${cmd.fenetre_horaire.debut} - ${cmd.fenetre_horaire.fin}
-                `).addTo(map);
+                `
+            )
+            .addTo(map);
 
-                markersCommandes.push(marker);
-            });
-        }
+          markersCommandes.push(marker);
+        });
+      }
 
-        function afficherDepots(livreurs) {
-            livreurs.forEach(liv => {
-                const marker = L.circleMarker([liv.position_depart.latitude, liv.position_depart.longitude], {
-                    radius: 10,
-                    fillColor: '#2196F3',
-                    color: '#fff',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.9
-                }).bindPopup(`
+      function afficherDepots(livreurs) {
+        livreurs.forEach((liv) => {
+          const marker = L.circleMarker(
+            [liv.position_depart.latitude, liv.position_depart.longitude],
+            {
+              radius: 10,
+              fillColor: "#2196F3",
+              color: "#fff",
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.9,
+            }
+          )
+            .bindPopup(
+              `
                     <b>🏢 ${liv.nom}</b><br>
                     Dépôt: ${liv.id}
-                `).addTo(map);
+                `
+            )
+            .addTo(map);
 
-                markersDepots.push(marker);
-            });
-        }
+          markersDepots.push(marker);
+        });
+      }
 
-        function afficherTrajets(trajets) {
-            const couleursTrajets = ['#E91E63', '#9C27B0', '#3F51B5', '#00BCD4', '#4CAF50', '#FF9800'];
-            let idx = 0;
+      function afficherTrajets(trajets) {
+        const couleursTrajets = [
+          "#E91E63",
+          "#9C27B0",
+          "#3F51B5",
+          "#00BCD4",
+          "#4CAF50",
+          "#FF9800",
+        ];
+        let idx = 0;
 
-            for (const [livreurId, trajet] of Object.entries(trajets)) {
-                if (trajet.points_gps && trajet.points_gps.length > 0) {
-                    const couleur = couleursTrajets[idx % couleursTrajets.length];
+        for (const [livreurId, trajet] of Object.entries(trajets)) {
+          if (trajet.points_gps && trajet.points_gps.length > 0) {
+            const couleur = couleursTrajets[idx % couleursTrajets.length];
 
-                    const polyline = L.polyline(trajet.points_gps, {
-                        color: couleur,
-                        weight: 3,
-                        opacity: 0.7,
-                        dashArray: '5, 10'
-                    }).bindPopup(`
+            const polyline = L.polyline(trajet.points_gps, {
+              color: couleur,
+              weight: 3,
+              opacity: 0.7,
+              dashArray: "5, 10",
+            })
+              .bindPopup(
+                `
                         <b>${livreurId}</b><br>
                         ${trajet.commandes.length} livraisons<br>
                         ${trajet.metriques.distance_km} km
-                    `).addTo(map);
+                    `
+              )
+              .addTo(map);
 
-                    polylinesTrajets.push(polyline);
-                    idx++;
-                }
-            }
+            polylinesTrajets.push(polyline);
+            idx++;
+          }
         }
+      }
 
-        function centrerCarte() {
-            if (markersCommandes.length > 0) {
-                const group = L.featureGroup(markersCommandes);
-                map.fitBounds(group.getBounds());
-            }
+      function centrerCarte() {
+        if (markersCommandes.length > 0) {
+          const group = L.featureGroup(markersCommandes);
+          map.fitBounds(group.getBounds());
         }
+      }
 
-        // Contrôles de visibilité
-        document.getElementById('show-trajets').addEventListener('change', (e) => {
-            polylinesTrajets.forEach(p => {
-                if (e.target.checked) {
-                    map.addLayer(p);
-                } else {
-                    map.removeLayer(p);
-                }
-            });
+      // Contrôles de visibilité
+      document
+        .getElementById("show-trajets")
+        .addEventListener("change", (e) => {
+          polylinesTrajets.forEach((p) => {
+            if (e.target.checked) {
+              map.addLayer(p);
+            } else {
+              map.removeLayer(p);
+            }
+          });
         });
 
-        document.getElementById('show-commandes').addEventListener('change', (e) => {
-            markersCommandes.forEach(m => {
-                if (e.target.checked) {
-                    map.addLayer(m);
-                } else {
-                    map.removeLayer(m);
-                }
-            });
+      document
+        .getElementById("show-commandes")
+        .addEventListener("change", (e) => {
+          markersCommandes.forEach((m) => {
+            if (e.target.checked) {
+              map.addLayer(m);
+            } else {
+              map.removeLayer(m);
+            }
+          });
         });
 
-        document.getElementById('show-depots').addEventListener('change', (e) => {
-            markersDepots.forEach(m => {
-                if (e.target.checked) {
-                    map.addLayer(m);
-                } else {
-                    map.removeLayer(m);
-                }
-            });
+      document.getElementById("show-depots").addEventListener("change", (e) => {
+        markersDepots.forEach((m) => {
+          if (e.target.checked) {
+            map.addLayer(m);
+          } else {
+            map.removeLayer(m);
+          }
         });
+      });
 
-        // Initialiser
-        initialiserCarte();
+      // Initialiser
+      initialiserCarte();
     </script>
-</body>
+  </body>
 </html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Livreurs - Smart Delivery</title>
+
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <style>
+      .page-container {
+        padding: 30px;
+        max-width: 1200px;
+        margin: auto;
+      }
+
+      .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .search-bar {
+        margin: 20px 0;
+      }
+
+      .search-bar input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 15px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      th,
+      td {
+        padding: 14px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+      }
+
+      th {
+        background: #f9f9f9;
+        font-weight: bold;
+      }
+
+      tr:hover {
+        background: #f5faff;
+      }
+
+      .btn-view {
+        background: #2196f3;
+        padding: 7px 12px;
+        border-radius: 5px;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      .status-ok {
+        color: green;
+        font-weight: bold;
+      }
+
+      .status-no {
+        color: #cc0000;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+      <div class="nav-container">
+        <div class="logo">
+          <i class="fas fa-truck"></i>
+          <span>Smart Delivery</span>
+        </div>
+        <ul class="nav-menu">
+          <li><a href="/">Accueil</a></li>
+          <li><a href="/dashboard">Dashboard</a></li>
+          <li><a href="/carte">Carte</a></li>
+          <li><a href="/livreurs" class="active">Livreurs</a></li>
+          <li><a href="/commandes">Commandes</a></li>
+          <li><a href="/suivi">Suivi Temps Réel</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="page-container">
+      <div class="page-header">
+        <h1>🚚 Liste des Livreurs</h1>
+      </div>
+
+      <!-- BARRE DE RECHERCHE -->
+      <div class="search-bar">
+        <input
+          type="text"
+          id="searchLivreur"
+          placeholder="Rechercher un livreur..."
+        />
+      </div>
+
+      <!-- TABLEAU -->
+      <table id="tableLivreurs">
+        <thead>
+          <tr>
+            <th>Livreur</th>
+            <th>Capacité</th>
+            <th>Disponibilité</th>
+            <th>Commandes</th>
+            <th>Distance</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyLivreurs">
+          <!-- JS va remplir -->
+        </tbody>
+      </table>
+    </div>
+
+    <script>
+      async function chargerLivreurs() {
+        const resLiv = await fetch("/api/livreurs");
+        const resTraj = await fetch("/api/trajets");
+
+        const dataLiv = await resLiv.json();
+        const dataTraj = await resTraj.json();
+
+        const livreurs = dataLiv.livreurs;
+        const trajets = dataTraj.trajets;
+
+        const tbody = document.getElementById("tbodyLivreurs");
+        tbody.innerHTML = "";
+
+        livreurs.forEach((l) => {
+          const trajet = trajets[l.id] || null;
+
+          const nbCmd = trajet ? trajet.commandes.length : 0;
+          const dist = trajet ? trajet.metriques.distance_km : 0;
+
+          const dispo = l.disponible
+            ? "<span class='status-ok'>Disponible</span>"
+            : "<span class='status-no'>Indispo</span>";
+
+          const row = `
+                    <tr>
+                        <td><strong>${l.nom}</strong> (${l.id})</td>
+                        <td>${l.capacite || "-"} kg</td>
+                        <td>${dispo}</td>
+                        <td>${nbCmd}</td>
+                        <td>${dist} km</td>
+                        <td>
+                            <button class="btn-view" onclick="voirTrajet('${
+                              l.id
+                            }')">
+                                <i class="fas fa-eye"></i> Voir
+                            </button>
+                        </td>
+                    </tr>
+                `;
+          tbody.innerHTML += row;
+        });
+      }
+
+      function voirTrajet(id) {
+        window.location.href = `/carte?id=${id}`;
+      }
+
+      // Recherche
+      document
+        .getElementById("searchLivreur")
+        .addEventListener("input", function () {
+          const term = this.value.toLowerCase();
+          const rows = document.querySelectorAll("#tbodyLivreurs tr");
+
+          rows.forEach((r) => {
+            r.style.display = r.textContent.toLowerCase().includes(term)
+              ? ""
+              : "none";
+          });
+        });
+
+      chargerLivreurs();
+    </script>
+  </body>
+</html>

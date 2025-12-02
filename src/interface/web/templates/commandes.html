@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Commandes - Smart Delivery</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <style>
+      .page-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .page-header h1 {
+        font-size: 2rem;
+        margin: 0;
+      }
+      .page-header i {
+        font-size: 1.8rem;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 18px;
+      }
+      .toolbar .search-input {
+        flex: 1 1 280px;
+      }
+      .toolbar select {
+        min-width: 180px;
+      }
+
+      .badge-prio-1 {
+        background: #ff4444;
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+      .badge-prio-2 {
+        background: #ffa500;
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+      .badge-prio-3 {
+        background: #4caf50;
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+      .badge-prio-default {
+        background: #e0e0e0;
+        color: #333;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+
+      .badge-statut {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+      .badge-statut-attente {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .badge-statut-cours {
+        background: #cce5ff;
+        color: #004085;
+      }
+      .badge-statut-livre {
+        background: #d4edda;
+        color: #155724;
+      }
+      .badge-statut-retard {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .data-table td {
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+      <div class="nav-container">
+        <div class="logo">
+          <i class="fas fa-truck"></i>
+          <span>Smart Delivery</span>
+        </div>
+        <ul class="nav-menu">
+          <li><a href="/">Accueil</a></li>
+          <li><a href="/dashboard">Dashboard</a></li>
+          <li><a href="/carte">Carte</a></li>
+          <li><a href="/livreurs">Livreurs</a></li>
+          <li><a href="/commandes" class="active">Commandes</a></li>
+          <li><a href="/suivi">Suivi Temps Réel</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <main class="page-container">
+      <!-- HEADER -->
+      <div class="page-header">
+        <i class="fas fa-box-open"></i>
+        <h1>Liste des Commandes</h1>
+      </div>
+
+      <!-- BARRE D’OUTILS -->
+      <div class="toolbar">
+        <input
+          type="text"
+          id="search-commande"
+          class="search-input"
+          placeholder="Rechercher une commande (ID, adresse...)"
+        />
+
+        <select id="filtre-priorite">
+          <option value="">Toutes priorités</option>
+          <option value="1">Urgent</option>
+          <option value="2" selected>Normal</option>
+          <option value="3">Flexible</option>
+        </select>
+
+        <select id="filtre-statut">
+          <option value="">Tous statuts</option>
+          <option value="en_attente">En attente</option>
+          <option value="en_cours">En cours</option>
+          <option value="livree">Livrée</option>
+          <option value="retard">En retard</option>
+        </select>
+
+        <button class="btn btn-secondary" onclick="voirSurCarte()">
+          <i class="fas fa-map"></i> Voir sur la carte
+        </button>
+      </div>
+
+      <!-- TABLEAU -->
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Adresse</th>
+              <th>Priorité</th>
+              <th>Fenêtre horaire</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-commandes">
+            <!-- Rempli dynamiquement -->
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <script>
+      let commandes = [];
+
+      function labelPriorite(prio) {
+        const map = {
+          1: "Urgent",
+          2: "Normal",
+          3: "Flexible",
+        };
+        return map[prio] || "—";
+      }
+
+      function classeBadgePriorite(prio) {
+        if (prio === 1) return "badge-prio-1";
+        if (prio === 2) return "badge-prio-2";
+        if (prio === 3) return "badge-prio-3";
+        return "badge-prio-default";
+      }
+
+      function labelStatut(statut) {
+        if (!statut) return "—";
+        const s = statut.toLowerCase();
+        const map = {
+          en_attente: "En attente",
+          en_cours: "En cours",
+          livree: "Livrée",
+          retard: "En retard",
+        };
+        return map[s] || statut;
+      }
+
+      function classeBadgeStatut(statut) {
+        if (!statut) return "badge-statut";
+        const s = statut.toLowerCase();
+        if (s === "en_attente") return "badge-statut badge-statut-attente";
+        if (s === "en_cours") return "badge-statut badge-statut-cours";
+        if (s === "livree") return "badge-statut badge-statut-livre";
+        if (s === "retard") return "badge-statut badge-statut-retard";
+        return "badge-statut";
+      }
+
+      function appliquerFiltres() {
+        const search = document
+          .getElementById("search-commande")
+          .value.toLowerCase();
+        const prio = document.getElementById("filtre-priorite").value;
+        const statut = document.getElementById("filtre-statut").value;
+        const tbody = document.getElementById("tbody-commandes");
+
+        tbody.innerHTML = "";
+
+        commandes
+          .filter((cmd) => {
+            // filtre texte
+            if (search) {
+              const texte = (
+                String(cmd.id) +
+                " " +
+                (cmd.adresse || "")
+              ).toLowerCase();
+              if (!texte.includes(search)) return false;
+            }
+            // filtre priorité
+            if (prio && String(cmd.priorite) !== prio) return false;
+
+            // filtre statut
+            if (
+              statut &&
+              (cmd.statut || "").toLowerCase() !== statut.toLowerCase()
+            )
+              return false;
+
+            return true;
+          })
+          .forEach((cmd) => {
+            const tr = document.createElement("tr");
+
+            const fenetre = cmd.fenetre_horaire
+              ? `${cmd.fenetre_horaire.debut} – ${cmd.fenetre_horaire.fin}`
+              : "—";
+
+            tr.innerHTML = `
+                        <td>${cmd.id}</td>
+                        <td>${cmd.adresse || ""}</td>
+                        <td>
+                            <span class="${classeBadgePriorite(cmd.priorite)}">
+                                ${labelPriorite(cmd.priorite)}
+                            </span>
+                        </td>
+                        <td>${fenetre}</td>
+                        <td>
+                            <span class="${classeBadgeStatut(cmd.statut)}">
+                                ${labelStatut(cmd.statut)}
+                            </span>
+                        </td>
+                    `;
+
+            tbody.appendChild(tr);
+          });
+      }
+
+      async function chargerCommandes() {
+        try {
+          const res = await fetch("/api/commandes");
+          const data = await res.json();
+          commandes = data.commandes || [];
+          appliquerFiltres();
+        } catch (err) {
+          console.error("Erreur chargement commandes :", err);
+        }
+      }
+
+      function voirSurCarte() {
+        // pour l’instant on redirige juste vers la page carte
+        window.location.href = "/carte";
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("search-commande")
+          .addEventListener("input", appliquerFiltres);
+        document
+          .getElementById("filtre-priorite")
+          .addEventListener("change", appliquerFiltres);
+        document
+          .getElementById("filtre-statut")
+          .addEventListener("change", appliquerFiltres);
+
+        chargerCommandes();
+      });
+    </script>
+  </body>
+</html>

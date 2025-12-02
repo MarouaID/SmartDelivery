@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Suivi Temps Réel - Smart Delivery</title>
+
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      #map {
+        height: 100vh;
+        width: calc(100vw - 320px);
+        float: right;
+      }
+
+      /* SIDEBAR */
+      .sidebar {
+        width: 300px;
+        height: 100vh;
+        background: #ffffff;
+        border-right: 1px solid #ddd;
+        padding: 20px;
+        position: fixed;
+        left: 0;
+        top: 0;
+        overflow-y: auto;
+      }
+
+      .sidebar h2 {
+        margin-bottom: 20px;
+        font-size: 22px;
+      }
+
+      .info-box {
+        background: #f8f9fa;
+        padding: 12px;
+        margin-bottom: 15px;
+        border-left: 4px solid #007bff;
+        border-radius: 6px;
+      }
+
+      .btn-full {
+        width: 100%;
+        padding: 12px;
+        background: #007bff;
+        color: white;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        margin-bottom: 10px;
+      }
+
+      .btn-full:hover {
+        background: #0056c2;
+      }
+
+      .btn-secondary {
+        width: 100%;
+        padding: 10px;
+        background: #eee;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- SIDEBAR GAUCHE -->
+    <div class="sidebar">
+      <h2>📍 Suivi Temps Réel</h2>
+
+      <div class="info-box">
+        <strong>Livreur :</strong><br />
+        <span id="livreur-nom">Livreur A</span>
+      </div>
+
+      <div class="info-box">
+        <strong>Position actuelle :</strong><br />
+        <span id="pos-actuelle">--</span>
+      </div>
+
+      <div class="info-box">
+        <strong>Vitesse :</strong><br />
+        <span id="vitesse">-- km/h</span>
+      </div>
+
+      <div class="info-box">
+        <strong>Statut :</strong><br />
+        <span id="statut">En attente…</span>
+      </div>
+
+      <button class="btn-full" onclick="lancerSimulation()">
+        ▶️ Lancer la Simulation
+      </button>
+
+      <button class="btn-secondary" onclick="recentrer()">🎯 Recentrer</button>
+    </div>
+
+    <!-- CARTE -->
+    <div id="map"></div>
+
+    <script>
+      let map = L.map("map").setView([31.6308, -8.0086], 15); // Marrakech
+      let marker = null;
+      let polyline = null;
+
+      let positions = []; // Trajet dessiné en direct
+      let simulationInterval = null;
+
+      // TILE
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap",
+      }).addTo(map);
+
+      // POINT DE DÉPART
+      let position = {
+        lat: 31.6308,
+        lng: -8.0086,
+      };
+
+      function afficherPointInitial() {
+        marker = L.marker([position.lat, position.lng]).addTo(map);
+      }
+
+      afficherPointInitial();
+
+      function genererDeplacement() {
+        // Petit déplacement aléatoire réaliste
+        position.lat += (Math.random() - 0.5) * 0.0005;
+        position.lng += (Math.random() - 0.5) * 0.0005;
+
+        // Mise à jour marker
+        marker.setLatLng([position.lat, position.lng]);
+
+        // Enregistrer point
+        positions.push([position.lat, position.lng]);
+
+        if (polyline) {
+          polyline.setLatLngs(positions);
+        } else {
+          polyline = L.polyline(positions, { color: "blue", weight: 3 }).addTo(
+            map
+          );
+        }
+
+        // Mise à jour UI
+        document.getElementById("pos-actuelle").textContent =
+          position.lat.toFixed(5) + ", " + position.lng.toFixed(5);
+
+        document.getElementById("vitesse").textContent =
+          (20 + Math.random() * 10).toFixed(1) + " km/h";
+        document.getElementById("statut").textContent = "En livraison…";
+      }
+
+      function lancerSimulation() {
+        // Reset si relance
+        if (polyline) polyline.remove();
+        positions = [];
+
+        document.getElementById("statut").textContent = "Démarrage…";
+
+        simulationInterval = setInterval(genererDeplacement, 1000);
+      }
+
+      function recentrer() {
+        map.setView([position.lat, position.lng], 16);
+      }
+    </script>
+  </body>
+</html>

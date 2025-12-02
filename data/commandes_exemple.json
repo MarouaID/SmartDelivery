@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "id": 1,
+    "client": "Client A",
+    "latitude": 31.632,
+    "longitude": -8.002,
+    "poids": 3.5,
+    "volume": 0.02,
+    "priorite": "normal",
+    "fenetre_horaire": ["09:00", "12:00"]
+  },
+  {
+    "id": 2,
+    "client": "Client B",
+    "latitude": 31.63,
+    "longitude": -8.01,
+    "poids": 10,
+    "volume": 0.1,
+    "priorite": "urgent",
+    "fenetre_horaire": ["14:00", "17:00"]
+  },
+  {
+    "id": 3,
+    "client": "Client C",
+    "latitude": 31.64,
+    "longitude": -8.015,
+    "poids": 2,
+    "volume": 0.01,
+    "priorite": "normal",
+    "fenetre_horaire": null
+  }
+]

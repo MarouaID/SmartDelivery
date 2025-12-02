@@ -23,5 +23,17 @@ def create_app():
     @app.route('/carte')
     def carte():
         return render_template('carte.html')
+    
+    @app.route("/livreurs")
+    def livreurs():
+        return render_template("livreurs.html")
+
+    @app.route("/commandes")
+    def commandes():
+        return render_template("commandes.html")
+
+    @app.route("/suivi")
+    def suivi():
+        return render_template("suivi.html")
 
     return app

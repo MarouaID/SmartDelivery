@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "id": "L1",
+    "nom": "Ahmed",
+    "capacite_kg": 15,
+    "capacite_volume": 0.5,
+    "disponibilite": ["08:00", "16:00"],
+    "position_depart": [31.63, -8.0]
+  },
+  {
+    "id": "L2",
+    "nom": "Sara",
+    "capacite_kg": 10,
+    "capacite_volume": 0.3,
+    "disponibilite": ["09:00", "18:00"],
+    "position_depart": [31.628, -8.005]
+  }
+]
