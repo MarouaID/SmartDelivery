@@ -42,3 +42,11 @@ data/resultats/*
 
 # Config locale
 config/local_config.json
+
+# OSRM
+*.osrm
+*.osrm.*
+*.osm.pbf
+
+# Routing cache
+osrm/data/*

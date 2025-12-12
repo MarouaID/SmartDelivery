@@ -2,137 +2,110 @@
 
 from flask import Blueprint, jsonify, request
 from src.affectation.affectation_manager import AffectationManager
+from src.routing.router_service import compute_routes
 from src.utils import load_json
+from src.models import Livreur,Commande
 import traceback
 
 api_bp = Blueprint("api", __name__)
 
 
-# ---------------------------------------------------
-#     ENDPOINT TEST / STATUS
-# ---------------------------------------------------
 @api_bp.get("/status")
 def status():
     return {"status": "OK", "service": "SmartDelivery API"}
 
 
-# ---------------------------------------------------
-#     ENDPOINT COMMANDES
-# ---------------------------------------------------
 @api_bp.get("/commandes")
 def get_commandes():
-    commandes = load_json("data/commandes_exemple.json")
-    return jsonify(commandes)
+    return jsonify(load_json("data/commandes_exemple.json"))
 
 
-# ---------------------------------------------------
-#     ENDPOINT LIVREURS
-# ---------------------------------------------------
 @api_bp.get("/livreurs")
 def get_livreurs():
-    livreurs = load_json("data/livreurs_exemple.json")
-    return jsonify(livreurs)
+    return jsonify(load_json("data/livreurs_exemple.json"))
 
 
-# ---------------------------------------------------
-#     ENDPOINT OPTIMISATION (BRANCH & BOUND)
-# ---------------------------------------------------
 @api_bp.post("/optimiser")
 def optimiser():
-    """
-    Endpoint d'optimisation :
-    - Peut recevoir {scenario, nb_livreurs, nb_commandes}
-    - OU {livreurs, commandes}
-    """
-
-    data = request.json or {}
-    print("🔍 DATA REÇUE PAR /optimiser :", data)
+    print("📥 DATA REÇUE PAR /optimiser :", request.json)
 
     try:
-        # ---------------------------------------------------
-        #   CAS 1 : Simulation (scenario)
-        # ---------------------------------------------------
+        data = request.json or {}
+
+        # =====================================================
+        # 1) RÉCUPÉRATION DES DONNÉES
+        # =====================================================
         if "scenario" in data:
             from src.simulation.simulateur import Simulateur
-
-            simulateur = Simulateur()
-            scenario = data.get("scenario", "normal")
-            nb_livreurs = int(data.get("nb_livreurs", 5))
-            nb_commandes = int(data.get("nb_commandes", 20))
-
-            # génération automatique livreurs + commandes
-            scene = simulateur.generer_scenario(
-                scenario, nb_livreurs, nb_commandes)
+            sim = Simulateur()
+            scene = sim.generer_scenario(
+                data.get("scenario", "normal"),
+                int(data.get("nb_livreurs", 5)),
+                int(data.get("nb_commandes", 20)),
+            )
             livreurs = scene["livreurs"]
             commandes = scene["commandes"]
 
-        # ---------------------------------------------------
-        #   CAS 2 : Affectation directe (livreurs + commandes)
-        # ---------------------------------------------------
         else:
-            livreurs = data.get("livreurs")
-            commandes = data.get("commandes")
+            livreurs_raw = data.get("livreurs")
+            commandes_raw = data.get("commandes")
 
-        if not livreurs or not commandes:
-            return jsonify({"success": False, "error": "livreurs and commandes are required"}), 400
+            if not livreurs_raw or not commandes_raw:
+                return jsonify({"success": False, "error": "livreurs & commandes manquants"}), 400
+            
+        if isinstance(livreurs[0], dict):
+            livreurs = [Livreur(**l) for l in livreurs]
 
-        # ---------------------------------------------------
-        #   DEBUG
-        # ---------------------------------------------------
-        print("\n=== DEBUG LIVREURS ===")
-        for l in livreurs:
-            print(type(l), l)
+        if isinstance(commandes[0], dict):
+            commandes = [Commande(**c) for c in commandes]
 
-        print("\n=== DEBUG COMMANDES ===")
-        for c in commandes:
-            print(type(c), c)
+            from src.models import Livreur, Commande
+            livreurs = [Livreur(**l) for l in livreurs_raw]
+            commandes = [Commande(**c) for c in commandes_raw]
 
-        # ---------------------------------------------------
-        #   APPEL BRANCH & BOUND
-        # ---------------------------------------------------
+        # =====================================================
+        # 2) AFFECTATION BRANCH & BOUND
+        # =====================================================
         manager = AffectationManager()
-        resultat = manager.affecter_commandes_branch_and_bound(
-            livreurs, commandes)
+        result_aff = manager.affecter_commandes(livreurs, commandes)
 
-        affectations = resultat["affectations"]
-        non_affectees = resultat["non_affectees"]
-        total_cost = resultat["total_cost"]
+        affectations = result_aff["affectations"]
+        non_affectees = result_aff["non_affectees"]
+        total_cost = 2
 
-        # ---------------------------------------------------
-        #   JSON SÉRIALISABLE
-        # ---------------------------------------------------
-        def serial(item):
-            """Transforme un objet Livreur/Commande en dict sérialisable"""
-            if hasattr(item, "to_dict"):
-                return item.to_dict()
-            if hasattr(item, "__dict__"):
-                return item.__dict__
-            return str(item)
+        # =====================================================
+        # 3) ROUTING
+        # =====================================================
+        print("🛣 Calcul des trajets optimisés…")
+        trajets = compute_routes(affectations)
 
-        # commandes affectées → dict
-        affectations_serial = {
-            liv_id: [serial(cmd) for cmd in cmds]
-            for liv_id, cmds in affectations.items()
+        # =====================================================
+        # 4) SÉRIALISATION (pour JSON propre)
+        # =====================================================
+        def serial(x):
+            if hasattr(x, "to_dict"):
+                return x.to_dict()
+            return x.__dict__ if hasattr(x, "__dict__") else str(x)
+
+        affectations_json = {
+            lid: [serial(c) for c in cmds]
+            for lid, cmds in affectations.items()
         }
 
-        # commandes non affectées → dict
-        non_affectees_serial = [serial(c) for c in non_affectees]
-
-        # ---------------------------------------------------
-        #   NOMBRE DE TRAJETS
-        # ---------------------------------------------------
-        nb_trajets = sum(1 for cmds in affectations.values() if len(cmds) > 0)
-
-        # ---------------------------------------------------
-        #   RÉPONSE FINALE
-        # ---------------------------------------------------
         return jsonify({
             "success": True,
             "message": "Optimisation réussie",
-            "nb_trajets": nb_trajets,
-            "score": float(total_cost) if total_cost is not None else None,
-            "affectations": affectations_serial,
-            "non_affectees": non_affectees_serial
+            "nb_trajets": len([c for c in affectations.values() if c]),
+            "score": float(total_cost) if total_cost else None,
+
+            # AFFECTATION
+            "affectations": affectations_json,
+
+            # ROUTING
+            "trajets_optimises": trajets,
+
+            # COMMANDES NON AFFECTÉES
+            "non_affectees": [serial(c) for c in non_affectees]
         })
 
     except Exception as e:
