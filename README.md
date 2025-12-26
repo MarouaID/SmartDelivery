@@ -1,62 +1,79 @@
  #pip install -r requirements.txt
 
-===========================================================================================================================================================================
-🚚 OSRM – Moteur de calcul d’itinéraires utilisé dans SmartDelivery
+=============================================================================================================
+🗺️ Routing & OSRM (Open Source Routing Machine)
 
-SmartDelivery utilise OSRM (Open Source Routing Machine) pour calculer :
+Cette partie du projet SmartDelivery utilise OSRM (Open Source Routing Machine) pour calculer :
 
-les distances réelles sur route,
+les distances réelles (km) sur le réseau routier marocain
 
-les durées de trajet précises,
+les temps de trajet réels (minutes)
 
-les matrices distance/temps entre plusieurs points,
+les matrices de distances/temps utilisées par les algorithmes d’optimisation (NN, 2-OPT, 3-OPT)
 
-les itinéraires optimisés pour les livreurs.
+OSRM est exécuté exclusivement via Docker, ce qui garantit une installation simple, reproductible et indépendante du système d’exploitation.
 
-OSRM fournit une cartographie routière extrêmement rapide, bien plus précise qu’une distance “à vol d’oiseau” ou qu’une estimation heuristique.
-Dans ce projet, il est utilisé pour générer des distances et durées qui alimentent les algorithmes d’optimisation (NN, 2-OPT, 3-OPT, Branch & Bound, gestion de batterie, bornes de recharge, etc.).
-=================================================
-🛠 Installation (Docker uniquement)
+⚙️ Pré-requis
 
-Aucune installation locale de OSRM n’est nécessaire : Docker suffit.
+Avant de lancer la partie routing :
 
-1. Installer Docker Desktop
+✅ Docker installé (Windows / Linux / macOS)
 
-Téléchargement : https://www.docker.com/products/docker-desktop/
+✅ Python 3.10+ pour lancer l’API SmartDelivery
 
-Assurez-vous ensuite que Docker fonctionne correctement :
+❌ Aucune installation locale d’OSRM requise
 
-docker --version
-==============================================================
-Le dossier :
+❌ Aucune compilation manuelle
 
-/osrm_data/
+📦 Données cartographiques utilisées
 
-contient déjà :
+Le routing est basé sur les données OpenStreetMap du Maroc :
 
-le fichier cartographique morocco-latest.osm.pbf
-
-tous les fichiers .osrm générés (.osrm, .osrm.cells, .osrm.names, .osrm.partition, etc.)
-
-➡️ Vous n’avez donc pas besoin d’exécuter :
-osrm-extract, osrm-partition, osrm-customize
-
-Toute la préparation a déjà été faite.
-
-=================================================================
-
-***** Aprés lancement de Docker Desktop *****
-
-🚀 Démarrer OSRM en 1 commande
-
-Placez-vous à la racine du projet et lancez simplement :
-
-docker run -d -p 5001:5000 \
-    -v $(pwd)/osrm_data:/data \
-    osrm/osrm-backend osrm-routed /data/morocco-latest.osrm
+morocco.osm.pbf
 
 
-OSRM sera accessible sur :
+📥 Téléchargement (obligatoire une seule fois) :
+https://download.geofabrik.de/africa/morocco-latest.osm.pbf
+
+👉 Le fichier doit être placé dans SmartDelivery/osrm/data/morocco-latest.osm.pbf   (apres avoir deposer le fichier installé dans osrm/data le renommé morocco-latest.osm.pbf)
+
+⚠️ Le fichier .osm.pbf n’est pas versionné sur GitHub (trop volumineux).
+
+🐳 Génération des fichiers OSRM avec Docker
+
+//. Installer Docker (si ce n’est pas déjà fait)
+
+Téléchargez Docker Desktop :
+
+👉 https://www.docker.com/products/docker-desktop/
+
+Vérifiez l’installation :
+
+    docker --version
+
+lancé docker desktop puis :
+    (là où se trouve morocco.osm.pbf) :
+
+1️⃣ Extraction des données
+    docker run -t -v ${PWD}:/data osrm/osrm-backend \
+    osrm-extract -p /opt/car.lua /data/morocco.osm.pbf
+
+2️⃣ Partitionnement (algorithme MLD)
+    docker run -t -v ${PWD}:/data osrm/osrm-backend \
+    osrm-partition /data/morocco.osrm
+
+3️⃣ Personnalisation
+    docker run -t -v ${PWD}:/data osrm/osrm-backend \
+    osrm-customize /data/morocco.osrm
+
+
+Ces commandes génèrent automatiquement les fichiers .osrm* nécessaires.
+
+🚀 Lancement du serveur OSRM
+    docker run -t -i -p 5001:5000 -v ${PWD}:/data \
+    osrm/osrm-backend osrm-routed /data/morocco.osrm
+
+
+📍 Le serveur OSRM est alors accessible sur :
 
 http://localhost:5001
-
