@@ -17,6 +17,7 @@ def create_app():
     template_folder = os.path.join(os.path.dirname(__file__), '../web/templates')
     static_folder = os.path.join(os.path.dirname(__file__), '../web/static')
 
+
     app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 
     # SESSION KEY
@@ -35,11 +36,15 @@ def create_app():
     @app.route("/")
     def index():
         return render_template("index.html")
+        return render_template("index.html")
 
+    @app.route("/dashboard")
     @app.route("/dashboard")
     def dashboard():
         return render_template("dashboard.html")
+        return render_template("dashboard.html")
 
+    @app.route("/carte")
     @app.route("/carte")
     def carte():
         return render_template("carte.html")
