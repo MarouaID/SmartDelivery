@@ -2,17 +2,16 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carte - Smart Delivery</title>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        #map {
-            height: calc(100vh - 60px);
-            width: 100%;
-        }
+        #map { height: calc(100vh - 60px); width: 100%; }
         .map-controls {
             position: absolute;
             top: 80px;
@@ -20,248 +19,235 @@
             background: white;
             padding: 15px;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             z-index: 1000;
-            max-width: 250px;
-        }
-        .map-legend {
-            position: absolute;
-            bottom: 30px;
-            left: 20px;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 1000;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin: 8px 0;
-        }
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            border-radius: 3px;
+            width: 260px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
         }
     </style>
 </head>
+
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="logo">
-                <i class="fas fa-truck"></i>
-                <span>Smart Delivery</span>
+
+<div class="map-controls">
+    <h3>🗺️ Trajets</h3>
+
+    <label>Livreur :</label>
+    <select id="select-livreur" style="width:100%; margin-bottom:10px;">
+        <option value="ALL">Tous</option>
+    </select>
+
+    <label><input type="checkbox" id="show-commandes" checked> Commandes</label><br>
+    <label><input type="checkbox" id="show-depots" checked> Dépôts</label><br><br>
+
+    <button onclick="centrerCarte()">📍 Centrer</button>
+</div>
+
+<div id="map"></div>
+
+<script>
+let map;
+let polylines = {};
+let markersDepots = [];
+let markersCommandesParLivreur = {};
+
+/* ===============================
+   INIT MAP
+   =============================== */
+function initialiserCarte() {
+    map = L.map('map').setView([31.63, -7.99], 12);
+
+    const boundsMaroc = L.latLngBounds([20,-17.5],[36.5,-0.5]);
+    map.setMaxBounds(boundsMaroc);
+    map.setMinZoom(6);
+
+    map.createPane('trajetsPane');
+    map.createPane('depotsPane');
+    map.createPane('commandesPane');
+
+    map.getPane('trajetsPane').style.zIndex = 400;
+    map.getPane('depotsPane').style.zIndex = 550;
+    map.getPane('commandesPane').style.zIndex = 600;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        attribution:'© OpenStreetMap'
+    }).addTo(map);
+
+    chargerDonnees();
+}
+
+/* ===============================
+   LOAD DATA
+   =============================== */
+async function chargerDonnees() {
+    const trajets = (await (await fetch('/api/trajets')).json()).trajets || {};
+    const livreurs = (await (await fetch('/api/livreurs')).json()).livreurs || [];
+
+    afficherTrajets(trajets);
+    afficherCommandesDepuisTrajets(trajets);
+    afficherDepots(livreurs);
+    remplirSelect(trajets);
+}
+
+/* ===============================
+   TRAJETS
+   =============================== */
+function afficherTrajets(trajets) {
+    const colors = ['#E91E63','#3F51B5','#009688','#FF9800','#9C27B0'];
+    let i = 0;
+
+    for (const [livreurId, t] of Object.entries(trajets)) {
+        if (!t.route_geometry) continue;
+
+        const latlngs = t.route_geometry.map(p => [p[1], p[0]]);
+
+        const poly = L.polyline(latlngs,{
+            color: colors[i++ % colors.length],
+            weight: 5,
+            opacity: 0.85,
+            pane: 'trajetsPane'
+        }).addTo(map);
+
+        polylines[livreurId] = poly;
+    }
+}
+
+/* ===============================
+   📦 COMMANDES PAR LIVREUR
+   =============================== */
+function afficherCommandesDepuisTrajets(trajets) {
+
+    const iconCommande = L.divIcon({
+        html: `
+            <div style="
+                width:28px;
+                height:28px;
+                background:#FF9800;
+                border-radius:50%;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                box-shadow:0 0 5px rgba(0,0,0,0.6);
+            ">
+                <i class="fas fa-box" style="color:white;font-size:14px;"></i>
             </div>
-            <ul class="nav-menu">
-                <li><a href="/">Accueil</a></li>
-                <li><a href="/dashboard">Dashboard</a></li>
-                <li><a href="/carte" class="active">Carte</a></li>
-                <li><a href="/livreurs">Livreurs</a></li>
-                <li><a href="/commandes">Commandes</a></li>
-                <li><a href="/suivi">Suivi Temps Réel</a></li>
-            </ul>
-        </div>
-    </nav>
+        `,
+        className: '',
+        iconSize: [28,28],
+        iconAnchor: [14,14]
+    });
 
-    <div class="map-controls">
-        <h3>🗺️ Contrôles</h3>
-        <div class="form-group">
-            <label>
-                <input type="checkbox" id="show-trajets" checked> Trajets
-            </label>
-        </div>
-        <div class="form-group">
-            <label>
-                <input type="checkbox" id="show-commandes" checked> Commandes
-            </label>
-        </div>
-        <div class="form-group">
-            <label>
-                <input type="checkbox" id="show-depots" checked> Dépôts
-            </label>
-        </div>
-        <button class="btn btn-small" onclick="centrerCarte()">
-            <i class="fas fa-crosshairs"></i> Centrer
-        </button>
-    </div>
+    for (const [livreurId, t] of Object.entries(trajets)) {
+        if (!t.points_gps) continue;
 
-    <div class="map-legend">
-        <h4>Légende</h4>
-        <div class="legend-item">
-            <div class="legend-color" style="background: #FF4444;"></div>
-            <span>Urgent</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background: #FFA500;"></div>
-            <span>Normal</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background: #4CAF50;"></div>
-            <span>Flexible</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background: #2196F3; border-radius: 50%;"></div>
-            <span>Dépôt</span>
-        </div>
-    </div>
+        markersCommandesParLivreur[livreurId] = [];
 
-    <div id="map"></div>
-
-    <script>
-        let map;
-        let markersCommandes = [];
-        let markersDepots = [];
-        let polylinesTrajets = [];
-
-        function initialiserCarte() {
-            // Centrer sur Paris par défaut
-            map = L.map('map').setView([48.8566, 2.3522], 12);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            chargerDonnees();
-        }
-
-        async function chargerDonnees() {
-            try {
-                // Charger commandes
-                const commandesRes = await fetch('/api/commandes');
-                const commandesData = await commandesRes.json();
-                const commandes = commandesData.commandes || [];
-
-                // Charger livreurs
-                const livreursRes = await fetch('/api/livreurs');
-                const livreursData = await livreursRes.json();
-                const livreurs = livreursData.livreurs || [];
-
-                // Charger trajets
-                const trajetsRes = await fetch('/api/trajets');
-                const trajetsData = await trajetsRes.json();
-                const trajets = trajetsData.trajets || {};
-
-                afficherCommandes(commandes);
-                afficherDepots(livreurs);
-                afficherTrajets(trajets);
-
-            } catch (error) {
-                console.error('Erreur chargement carte:', error);
-            }
-        }
-
-        function afficherCommandes(commandes) {
-            const couleursPriorite = {
-                1: '#FF4444',
-                2: '#FFA500',
-                3: '#4CAF50'
-            };
-
-            commandes.forEach(cmd => {
-                const couleur = couleursPriorite[cmd.priorite] || '#999';
-                const marker = L.circleMarker([cmd.position.latitude, cmd.position.longitude], {
-                    radius: 8,
-                    fillColor: couleur,
-                    color: '#fff',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).bindPopup(`
-                    <b>${cmd.id}</b><br>
-                    ${cmd.adresse}<br>
-                    Priorité: ${cmd.priorite}<br>
-                    Fenêtre: ${cmd.fenetre_horaire.debut} - ${cmd.fenetre_horaire.fin}
-                `).addTo(map);
-
-                markersCommandes.push(marker);
-            });
-        }
-
-        function afficherDepots(livreurs) {
-            livreurs.forEach(liv => {
-                const marker = L.circleMarker([liv.position_depart.latitude, liv.position_depart.longitude], {
-                    radius: 10,
-                    fillColor: '#2196F3',
-                    color: '#fff',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.9
-                }).bindPopup(`
-                    <b>🏢 ${liv.nom}</b><br>
-                    Dépôt: ${liv.id}
-                `).addTo(map);
-
-                markersDepots.push(marker);
-            });
-        }
-
-        function afficherTrajets(trajets) {
-            const couleursTrajets = ['#E91E63', '#9C27B0', '#3F51B5', '#00BCD4', '#4CAF50', '#FF9800'];
-            let idx = 0;
-
-            for (const [livreurId, trajet] of Object.entries(trajets)) {
-                if (trajet.points_gps && trajet.points_gps.length > 0) {
-                    const couleur = couleursTrajets[idx % couleursTrajets.length];
-
-                    const polyline = L.polyline(trajet.points_gps, {
-                        color: couleur,
-                        weight: 3,
-                        opacity: 0.7,
-                        dashArray: '5, 10'
-                    }).bindPopup(`
-                        <b>${livreurId}</b><br>
-                        ${trajet.commandes.length} livraisons<br>
-                        ${trajet.metriques.distance_km} km
-                    `).addTo(map);
-
-                    polylinesTrajets.push(polyline);
-                    idx++;
+        t.points_gps.slice(1).forEach(pt => {
+            const m = L.marker(
+                [pt[0], pt[1]],
+                {
+                    icon: iconCommande,
+                    pane: 'commandesPane',
+                    zIndexOffset: 1000
                 }
-            }
-        }
+            ).addTo(map);
 
-        function centrerCarte() {
-            if (markersCommandes.length > 0) {
-                const group = L.featureGroup(markersCommandes);
-                map.fitBounds(group.getBounds());
-            }
-        }
-
-        // Contrôles de visibilité
-        document.getElementById('show-trajets').addEventListener('change', (e) => {
-            polylinesTrajets.forEach(p => {
-                if (e.target.checked) {
-                    map.addLayer(p);
-                } else {
-                    map.removeLayer(p);
-                }
-            });
+            markersCommandesParLivreur[livreurId].push(m);
         });
+    }
+}
 
-        document.getElementById('show-commandes').addEventListener('change', (e) => {
-            markersCommandes.forEach(m => {
-                if (e.target.checked) {
-                    map.addLayer(m);
-                } else {
-                    map.removeLayer(m);
-                }
-            });
-        });
+/* ===============================
+   🏢 DEPOTS — LOGO FIABLE
+   =============================== */
+function afficherDepots(livreurs) {
 
-        document.getElementById('show-depots').addEventListener('change', (e) => {
-            markersDepots.forEach(m => {
-                if (e.target.checked) {
-                    map.addLayer(m);
-                } else {
-                    map.removeLayer(m);
-                }
-            });
-        });
+    const iconDepot = L.divIcon({
+        html: `
+            <div style="
+                width:34px;
+                height:34px;
+                background:#2196F3;
+                border-radius:50%;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                box-shadow:0 0 6px rgba(0,0,0,0.6);
+            ">
+                <i class="fas fa-warehouse" style="color:white;font-size:16px;"></i>
+            </div>
+        `,
+        className: '',
+        iconSize: [34,34],
+        iconAnchor: [17,17]
+    });
 
-        // Initialiser
-        initialiserCarte();
-    </script>
+    livreurs.forEach(l => {
+        const m = L.marker(
+            [l.latitude_depart, l.longitude_depart],
+            {
+                icon: iconDepot,
+                pane: 'depotsPane',
+                zIndexOffset: 900
+            }
+        )
+        .bindPopup(`<b>Dépôt</b><br>${l.nom || l.id}`)
+        .addTo(map);
+
+        markersDepots.push(m);
+    });
+}
+
+/* ===============================
+   SELECT LIVREUR
+   =============================== */
+function remplirSelect(trajets) {
+    const select = document.getElementById('select-livreur');
+
+    Object.keys(trajets).forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = id;
+        select.appendChild(opt);
+    });
+
+    select.onchange = () => {
+        const val = select.value;
+
+        for (const [id, p] of Object.entries(polylines)) {
+            (val === 'ALL' || id === val) ? map.addLayer(p) : map.removeLayer(p);
+        }
+
+        for (const [id, markers] of Object.entries(markersCommandesParLivreur)) {
+            markers.forEach(m =>
+                (val === 'ALL' || id === val) ? map.addLayer(m) : map.removeLayer(m)
+            );
+        }
+    };
+}
+
+/* ===============================
+   CENTRER
+   =============================== */
+function centrerCarte() {
+    const visibles = Object.values(polylines).filter(p => map.hasLayer(p));
+    if (visibles.length) {
+        map.fitBounds(L.featureGroup(visibles).getBounds());
+    }
+}
+
+/* ===============================
+   TOGGLES
+   =============================== */
+document.getElementById('show-commandes').onchange = e =>
+    Object.values(markersCommandesParLivreur)
+        .flat()
+        .forEach(m => e.target.checked ? map.addLayer(m) : map.removeLayer(m));
+
+document.getElementById('show-depots').onchange = e =>
+    markersDepots.forEach(m => e.target.checked ? map.addLayer(m) : map.removeLayer(m));
+
+initialiserCarte();
+</script>
+
 </body>
 </html>

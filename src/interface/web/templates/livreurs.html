@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Livreurs</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+
+  <style>
+    .page-header{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:20px;
+    }
+
+    table{
+        width:100%;
+        border-collapse:collapse;
+        background:white;
+        border-radius:10px;
+        overflow:hidden;
+    }
+
+    th,td{
+        padding:12px;
+        text-align:center;
+        border-bottom:1px solid #eee;
+    }
+
+    th{
+        background:#007bff;
+        color:white;
+    }
+
+    tr:hover{
+        background:#f5f5f5;
+    }
+
+    .btn-add{
+        padding:10px 15px;
+        background:#007bff;
+        color:white;
+        border-radius:6px;
+        cursor:pointer;
+    }
+
+    .action-btn{
+        padding:6px 10px;
+        border-radius:6px;
+        color:white;
+        cursor:pointer;
+    }
+
+    .edit{
+        background:#ffa500;
+    }
+
+    .delete{
+        background:#e63946;
+    }
+
+    /* ================= OVERLAY POPUP ================= */
+
+    .form-overlay{
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .form-popup{
+        background:white;
+        padding:20px;
+        border-radius:10px;
+        width:650px;
+        max-height:90vh;
+        overflow-y:auto;
+        box-shadow:0 10px 40px rgba(0,0,0,0.4);
+        animation: popup .25s ease;
+    }
+
+    @keyframes popup{
+        from{ transform: scale(.9); opacity:0}
+        to{ transform: scale(1); opacity:1}
+    }
+
+    .form-grid{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+    }
+
+    input,select{
+        padding:8px;
+        width:100%;
+    }
+
+    .btn-save{
+        background:#28a745;
+        padding:10px;
+        color:white;
+        width:100%;
+        border-radius:6px;
+        margin-top:10px;
+        cursor:pointer;
+    }
+
+    .btn-close{
+        background:#444;
+        padding:8px;
+        margin-top:8px;
+        color:white;
+        width:100%;
+        border-radius:6px;
+        cursor:pointer;
+    }
+
+    /* ===== RESULT POPUP ===== */
+    .result-popup-box{
+        background:white;
+        width:520px;
+        border-radius:12px;
+        padding:25px;
+        box-shadow:0 20px 50px rgba(0,0,0,0.5);
+        animation:popup .25s ease;
+        text-align:center;
+    }
+
+    .result-title{
+        color:#007bff;
+        margin-bottom:10px;
+        font-size:22px;
+        font-weight:bold;
+    }
+
+    .result-content{
+        margin-top:10px;
+        font-size:16px;
+        color:#222;
+        background:#f8f9ff;
+        padding:15px;
+        border-radius:10px;
+        border:1px solid #d8e3ff;
+        text-align:left;
+    }
+
+    .result-content p{
+        margin:6px 0;
+        font-size:15px;
+    }
+
+    .result-content span{
+        color:#007bff;
+        font-weight:bold;
+        font-size:18px;
+    }
+
+    /* Overlay déjà présent mais si besoin */
+    .form-overlay{
+        position:fixed;
+        inset:0;
+        display:none;
+        justify-content:center;
+        align-items:center;
+        background:rgba(0,0,0,0.6);
+        z-index:2000;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">
+      <i class="fas fa-truck"></i>
+      <span>Smart Delivery</span>
+    </div>
+
+    <ul class="nav-menu">
+      <li><a href="/">Accueil</a></li>
+      <li><a href="/dashboard">Dashboard</a></li>
+      <li><a href="/carte">Carte</a></li>
+      <li><a href="/livreurs" class="active">Livreurs</a></li>
+      <li><a href="/commandes">Commandes</a></li>
+      <li><a href="/suivi">Suivi Temps Réel</a></li>
+    </ul>
+  </div>
+</nav>
+
+
+<section class="container">
+    
+    <div class="page-header">
+        <h2>🚚 Gestion des Livreurs</h2>
+        <button class="btn-add" onclick="ouvrirForm()"> + Ajouter un Livreur</button>
+    </div>
+
+    <!-- TABLE -->
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nom</th>
+                <th>Poids Max</th>
+                <th>Volume Max</th>
+                <th>Horaire</th>
+                <th>Vitesse</th>
+                <th>Disponible</th>
+                <th>Contact</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+
+        <tbody id="table-body"></tbody>
+
+    </table>
+
+    <!-- POPUP ADD LIVREUR -->
+    <div class="form-overlay" id="popup">
+      <div class="form-popup">
+        <h3>Ajouter un Livreur</h3>
+
+        <div class="form-grid">
+            <input placeholder="ID" id="id">
+            <input placeholder="Nom" id="nom">
+            <input placeholder="Latitude départ" id="lat">
+            <input placeholder="Longitude départ" id="lng">
+
+            <input placeholder="Capacité Poids" id="poids">
+            <input placeholder="Capacité Volume" id="volume">
+
+            <input placeholder="Heure début" id="h1">
+            <input placeholder="Heure fin" id="h2">
+
+            <input placeholder="Vitesse Moyenne" id="speed">
+            <input placeholder="Coût / km" id="cout">
+
+            <input placeholder="Téléphone" id="tel">
+            <input placeholder="Email" id="email">
+        </div>
+
+        <button class="btn-save" onclick="enregistrer()">Enregistrer</button>
+        <button class="btn-close" onclick="fermerAdd()">Fermer</button>
+      </div>
+    </div>
+
+    <!-- POPUP EDIT LIVREUR -->
+    <div class="form-overlay" id="edit-popup">
+      <div class="form-popup">
+        <h3>Modifier Livreur</h3>
+
+        <div class="form-grid">
+            <input id="edit-nom" placeholder="Nom">
+            <input id="edit-poids" placeholder="Capacité Poids">
+            <input id="edit-volume" placeholder="Capacité Volume">
+
+            <input id="edit-h1" placeholder="Heure début">
+            <input id="edit-h2" placeholder="Heure fin">
+
+            <input id="edit-speed" placeholder="Vitesse Moyenne">
+            <input id="edit-cout" placeholder="Coût / km">
+
+            <input id="edit-tel" placeholder="Téléphone">
+            <input id="edit-email" placeholder="Email">
+        </div>
+
+        <button class="btn-save" onclick="saveEdit()">Enregistrer</button>
+        <button class="btn-close" onclick="fermerEdit()">Fermer</button>
+      </div>
+    </div>
+
+    <!-- RESULT POPUP -->
+    <div class="form-overlay" id="result-popup">
+    <div class="result-popup-box">
+        
+        <h3 class="result-title">
+            🎉 Livreur Créé Avec Succès
+        </h3>
+
+        <div id="result-content" class="result-content"></div>
+
+        <button class="btn-close" onclick="fermerResult()">Fermer</button>
+
+    </div>
+    </div>
+
+
+</section>
+
+<script>
+
+function ouvrirForm(){
+    document.getElementById("popup").style.display = "flex";
+}
+
+function fermerAdd(){
+    document.getElementById("popup").style.display = "none";
+}
+
+function fermerEdit(){
+    document.getElementById("edit-popup").style.display = "none";
+}
+
+function fermerResult(){
+    document.getElementById("result-popup").style.display = "none";
+}
+
+async function enregistrer(){
+
+    const data = {
+        id: id.value,
+        nom: nom.value,
+        latitude_depart: lat.value,
+        longitude_depart: lng.value,
+        capacite_poids: poids.value,
+        capacite_volume: volume.value,
+        heure_debut: h1.value,
+        heure_fin: h2.value,
+        vitesse_moyenne: speed.value,
+        cout_km: cout.value,
+        telephone: tel.value,
+        email: email.value
+    };
+
+    try {
+
+        console.log("➡️ Envoi au backend...", data);
+
+        const res = await fetch("/api/livreurs",{
+            method:"POST",
+            headers:{ "Content-Type":"application/json"},
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        console.log("⬅️ Réponse Backend :", result);
+
+        if(!res.ok){
+            alert("Erreur Serveur !");
+            return;
+        }
+
+        // sécurité : si pas de champ success on continue quand même
+        document.getElementById("result-content").innerHTML = `
+            <p><b>ID :</b> ${data.id}</p>
+            <p><b>Nom :</b> ${data.nom}</p>
+            <p><b>Email Login :</b> ${result.login_email ?? data.email}</p>
+
+            <p><b>Mot de Passe :</b>
+                <span style="font-size:22px;color:#007bff;">
+                    ${result.password ?? "⚠️ Non reçu"}
+                </span>
+            </p>
+
+            <p style="color:red;">
+                ⚠️ Sauvegarde ce mot de passe, il ne sera plus affiché !
+            </p>
+        `;
+
+        document.getElementById("result-popup").style.display = "flex";
+
+        // recharge tableau
+        chargerLivreurs();
+
+        // fermer formulaire d'ajout
+        fermerAdd();
+
+        // vider les champs
+        document.querySelectorAll("#popup input").forEach(i => i.value = "");
+
+    } catch(e){
+        console.error("❌ ERREUR JS :", e);
+        alert("Erreur JavaScript — regarde la console !");
+    }
+}
+
+
+let currentEditId = null;
+
+function editLivreur(id) {
+    currentEditId = id;
+
+    fetch(`/api/livreurs`)
+    .then(r => r.json())
+    .then(list => {
+        const l = list.find(x => x.id === id);
+        if(!l) return;
+
+        document.getElementById("edit-nom").value = l.nom;
+        document.getElementById("edit-poids").value = l.capacite_poids;
+        document.getElementById("edit-volume").value = l.capacite_volume;
+
+        document.getElementById("edit-h1").value = l.heure_debut;
+        document.getElementById("edit-h2").value = l.heure_fin;
+
+        document.getElementById("edit-speed").value = l.vitesse_moyenne;
+        document.getElementById("edit-cout").value = l.cout_km;
+
+        document.getElementById("edit-tel").value = l.telephone ?? "";
+        document.getElementById("edit-email").value = l.email ?? "";
+
+        document.getElementById("edit-popup").style.display = "flex";
+    });
+}
+
+async function saveEdit() {
+    const data = {
+        nom: document.getElementById("edit-nom").value,
+        capacite_poids: document.getElementById("edit-poids").value,
+        capacite_volume: document.getElementById("edit-volume").value,
+        heure_debut: document.getElementById("edit-h1").value,
+        heure_fin: document.getElementById("edit-h2").value,
+        vitesse_moyenne: document.getElementById("edit-speed").value,
+        cout_km: document.getElementById("edit-cout").value,
+        telephone: document.getElementById("edit-tel").value,
+        email: document.getElementById("edit-email").value,
+        disponible: 1
+    };
+
+    await fetch(`/api/livreurs/${currentEditId}`, {
+        method: "PUT",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(data)
+    });
+
+    alert("Livreur modifié !");
+    fermerEdit();
+    chargerLivreurs();
+}
+
+async function deleteLivreur(id){
+    if(!confirm("Supprimer ce livreur ?")) return;
+    await fetch("/api/livreurs/"+id,{ method:"DELETE" });
+    chargerLivreurs();
+}
+
+async function chargerLivreurs() {
+    const res = await fetch("/api/livreurs");
+    const data = await res.json();
+
+    const body = document.getElementById("table-body");
+    body.innerHTML = "";
+
+    data.forEach(l => {
+        body.innerHTML += `
+        <tr>
+            <td>${l.id}</td>
+            <td>${l.nom}</td>
+            <td>${l.capacite_poids} kg</td>
+            <td>${l.capacite_volume} L</td>
+            <td>${l.heure_debut} → ${l.heure_fin}</td>
+            <td>${l.vitesse_moyenne} km/h</td>
+            <td>${l.disponible == 1 ? "✅" : "❌"}</td>
+            <td>${l.telephone ?? "-"}</td>
+            <td>
+                <button class="action-btn edit" onclick="editLivreur('${l.id}')">Modifier</button>
+                <button class="action-btn delete" onclick="deleteLivreur('${l.id}')">Supprimer</button>
+            </td>
+        </tr>`;
+    });
+}
+
+chargerLivreurs();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Smart Delivery - Login</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet"
+ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+
+<style>
+
+body{
+    margin:0;
+    background:linear-gradient(135deg,#0a1730,#001f4d);
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    font-family:Arial;
+}
+
+/* ===== BACKGROUND ANIMATION ===== */
+.bg-circles{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+    z-index:-1;
+}
+.bg-circles span{
+    position:absolute;
+    width:120px;
+    height:120px;
+    background:#ffffff10;
+    border-radius:50%;
+    filter:blur(3px);
+    animation: float 6s infinite ease-in-out;
+}
+.bg-circles span:nth-child(1){ top:10%; left:15%; }
+.bg-circles span:nth-child(2){ bottom:15%; right:15%; width:180px;height:180px;}
+.bg-circles span:nth-child(3){ top:20%; right:25%; width:90px;height:90px;}
+.bg-circles span:nth-child(4){ bottom:25%; left:25%; width:140px;height:140px;}
+
+@keyframes float{
+ 0%{ transform:translateY(0); }
+ 50%{ transform:translateY(-15px); }
+ 100%{ transform:translateY(0); }
+}
+
+/* ===== LOGIN CONTAINER ===== */
+.page-container{
+    margin-top:120px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+/* ===== LOGIN CARD ===== */
+.login-box{
+    width:420px;
+    padding:35px;
+    border-radius:18px;
+    background:rgba(255,255,255,0.1);
+    backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,0.2);
+    box-shadow:0 0 25px rgba(0,0,0,0.4),
+               inset 0 0 20px rgba(255,255,255,0.05);
+    color:white;
+    animation: drop .35s ease;
+}
+@keyframes drop{
+ from{ transform:translateY(-20px); opacity:0 }
+ to{ transform:translateY(0); opacity:1 }
+}
+
+.login-box h2{
+    text-align:center;
+    margin-bottom:10px;
+    color:#fff;
+}
+
+.sub{
+    text-align:center;
+    color:#d6ddeb;
+    margin-bottom:20px;
+    font-size:14px;
+}
+
+.input-group{
+    margin-top:12px;
+}
+
+.input-group .label{
+    color:#d6ddeb;
+    margin-bottom:4px;
+    font-size:14px;
+}
+
+.input-group .field{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:#ffffff15;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid transparent;
+    transition:.2s;
+}
+.input-group .field:hover{
+   border:1px solid #5da8ff;
+}
+.input-group i{
+    color:#8fbfff;
+}
+.input-group input{
+    background:none;
+    border:none;
+    outline:none;
+    color:white;
+    width:100%;
+}
+
+/* ===== BUTTON ===== */
+.btn-login{
+    width:100%;
+    padding:12px;
+    background:linear-gradient(135deg,#007bff,#00c6ff);
+    color:white;
+    border-radius:10px;
+    margin-top:15px;
+    cursor:pointer;
+    font-size:16px;
+    border:none;
+    transition:.2s;
+}
+.btn-login:hover{
+    transform:translateY(-2px);
+    box-shadow:0 8px 20px rgba(0,123,255,.5);
+}
+
+/* loader */
+.loading{
+    display:none;
+    margin-top:8px;
+    text-align:center;
+    color:#8fbfff;
+}
+
+/* error toast */
+.error-box{
+    display:none;
+    margin-top:12px;
+    padding:10px;
+    background:#ff4d4d20;
+    border:1px solid #ff6b6b;
+    border-radius:10px;
+    text-align:center;
+    color:#ff9b9b;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- ================= NAVBAR ================= -->
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">
+      <i class="fas fa-truck"></i>
+      <span>Smart Delivery</span>
+    </div>
+    <ul class="nav-menu">
+      <li><a href="/" >Accueil</a></li>
+      <li><a href="/login" class="active">Connexion</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="bg-circles">
+ <span></span><span></span><span></span><span></span>
+</div>
+
+<!-- LOGIN -->
+<div class="page-container">
+<div class="login-box">
+
+    <h2>🔐 Connexion</h2>
+    <p class="sub">Bienvenue sur Smart Delivery</p>
+
+    <div class="input-group">
+        <div class="label">Email</div>
+        <div class="field">
+            <i class="fa-solid fa-envelope"></i>
+            <input id="email" placeholder="ex: user@gmail.com">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <div class="label">Mot de passe</div>
+        <div class="field">
+            <i class="fa-solid fa-lock"></i>
+            <input id="password" placeholder="••••••••" type="password">
+        </div>
+    </div>
+
+    <button class="btn-login" onclick="login()">Se connecter</button>
+
+    <div class="loading" id="loading">
+        ⏳ Vérification des identifiants...
+    </div>
+
+    <div class="error-box" id="error"></div>
+
+</div>
+</div>
+
+
+<script>
+
+async function login(){
+
+ document.getElementById("error").style.display="none";
+ document.getElementById("loading").style.display="block";
+
+ let data = {
+    email : email.value,
+    password : password.value
+ };
+
+ const res = await fetch("/login",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json"},
+    body:JSON.stringify(data)
+ });
+
+ const result = await res.json();
+
+ document.getElementById("loading").style.display="none";
+
+ if(!result.success){
+    document.getElementById("error").style.display="block";
+    document.getElementById("error").innerText = result.error;
+    return;
+ }
+
+ if(result.role === "admin")
+    window.location.href = "/dashboard";
+
+ else if(result.role === "livreur")
+    window.location.href = "/livreurDashboard";
+
+ else if(result.role === "client")
+    window.location.href = "/clientDashboard";
+}
+
+</script>
+
+</body>
+</html>

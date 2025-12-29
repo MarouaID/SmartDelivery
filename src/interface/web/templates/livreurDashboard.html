@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Livreur - Smart Delivery</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+body{ background:#f5f7ff; }
+
+.page-container{
+    padding:40px;
+    width:90%;
+    margin:auto;
+}
+
+/* ====== INFOS LIVREUR ====== */
+.welcome-card{
+    background:white;
+    border-radius:12px;
+    padding:30px;
+    box-shadow:0 10px 40px rgba(0,0,0,.1);
+    margin-top:30px;
+}
+
+.welcome-card h2{
+    color:#007bff;
+}
+
+.logout-wrapper{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    margin-top:30px;
+}
+
+.logout-btn{
+    margin-top:10px;
+    padding:12px 25px;
+    border-radius:8px;
+    background:#e63946;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+.logout-btn:hover{ background:#c1121f; }
+
+/* ====== TABLE ====== */
+.table-card{
+    margin-top:25px;
+    background:white;
+    padding:25px;
+    border-radius:12px;
+    box-shadow:0 10px 35px rgba(0,0,0,.1);
+}
+
+/* TABLE STYLE LIKE ADMIN */
+.data-table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:15px;
+}
+
+/* Centre tout le contenu */
+.data-table th,
+.data-table td{
+    text-align:center;
+    vertical-align:middle;
+    padding:14px 10px;
+}
+
+/* En-têtes */
+.data-table thead{
+    background:#007bff;
+}
+.data-table thead th{
+    color:white;
+}
+
+/* Bordures douces */
+.data-table tr{
+    border-bottom:1px solid #ddd;
+}
+
+/* Effet hover plus propre */
+.data-table tbody tr:hover{
+    background:#f1f5ff;
+}
+
+/* Statuts */
+.status{
+    padding:6px 10px;
+    border-radius:6px;
+    color:white;
+}
+.en_attente{ background:#ffc074; }
+.affectee{ background:#21c9f3; }
+.livree{ background:#28a745; }
+.reportee{ background:#ff5e00; }
+
+</style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="nav-container">
+        <div class="logo">
+            <i class="fas fa-truck"></i>
+            <span>Smart Delivery</span>
+        </div>
+
+        <ul class="nav-menu">
+            <li><a href="/">Accueil</a></li>
+
+            <!-- 🔥 NOUVEAU LIEN -->
+            <li><a href="#">Visualisation Trajet</a></li>
+        </ul>
+    </div>
+</nav>
+
+
+<div class="page-container">
+    <h1>🚚 Tableau de Bord Livreur</h1>
+
+    <!-- INFOS LIVREUR -->
+    <div class="welcome-card">
+        <h2>Bienvenue Livreur</h2>
+
+        {% if session.livreur %}
+            <p><b>ID :</b> {{ session.livreur.id }}</p>
+            <p><b>Nom :</b> {{ session.livreur.nom }}</p>
+            <p><b>Email :</b> {{ session.email }}</p>
+        {% else %}
+            <p>Vos informations seront affichées ici.</p>
+        {% endif %}
+    </div>
+
+
+    <!-- TABLE COMMANDES -->
+    <div class="table-card">
+        <h2>📦 Mes Commandes Assignées</h2>
+
+        <table class="data-table">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Adresse</th>
+                <th>Poids</th>
+                <th>Priorité</th>
+                <th>Contact Client</th>
+                <th>Statut</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+
+    <div class="logout-wrapper">
+        <button class="logout-btn" onclick="window.location='/logout'">
+            <i class="fas fa-sign-out-alt"></i> Déconnexion
+        </button>
+    </div>
+
+</div>
+
+
+<script>
+async function chargerCommandes(){
+
+    const res = await fetch("/api/livreur/commandes");
+    const data = await res.json();
+
+    const body = document.getElementById("tbody");
+    body.innerHTML = "";
+
+    if(!data.success || data.commandes.length === 0){
+        body.innerHTML = `<tr><td colspan="7">Aucune commande assignée</td></tr>`;
+        return;
+    }
+
+    data.commandes.forEach(c => {
+        body.innerHTML += `
+        <tr>
+            <td>${c.id}</td>
+            <td>${c.adresse}</td>
+            <td>${c.poids} kg</td>
+            <td>${c.priorite}</td>
+
+            <td>
+                ${c.client_email ? c.client_email : "—"}
+            </td>
+
+            <td>
+                <span class="status ${c.statut}">
+                    ${c.statut}
+                </span>
+            </td>
+
+            <td>
+                <button class="btn green" onclick="changerStatut('${c.id}','livree')">
+                    Livré
+                </button>
+
+                <button class="btn orange" onclick="changerStatut('${c.id}','reportee')">
+                    Reporter
+                </button>
+            </td>
+        </tr>`;
+    });
+}
+
+async function changerStatut(id, statut){
+
+    await fetch(`/api/commandes/${id}/status`,{
+        method:"PUT",
+        headers:{ "Content-Type":"application/json"},
+        body:JSON.stringify({ statut })
+    });
+
+    chargerCommandes();
+}
+
+chargerCommandes();
+</script>
+
+</body>
+</html>
