@@ -31,13 +31,14 @@
 
     .hero .subtitle {
       font-size: 20px;
-      color: #666;
+      color: #ffffff;
     }
 
     .hero .description {
       max-width: 600px;
       margin: auto;
-      color: #555;
+      color: #ffffff;
+      margin-bottom: 20px;
     }
 
     .demo-section {
@@ -84,11 +85,6 @@
       </div>
       <ul class="nav-menu">
         <li><a href="/" class="active">Accueil</a></li>
-        <li><a href="/dashboard">Dashboard</a></li>
-        <li><a href="/carte">Carte</a></li>
-        <li><a href="/livreurs">Livreurs</a></li>
-        <li><a href="/commandes">Commandes</a></li>
-        <li><a href="/suivi">Suivi Temps Réel</a></li>
          <li><a href="/login">Connexion</a></li>
       </ul>
     </div>
@@ -103,16 +99,12 @@
 
       <p class="description">
         Optimisez vos tournées grâce à l’IA : moins de distance, moins de coûts, plus d'efficacité.
+      </br>
       </p>
 
       <div class="hero-buttons">
-        <a href="/dashboard" class="btn btn-primary">
-          <i class="fas fa-chart-line"></i> Ouvrir le Dashboard
-        </a>
-
-        <!-- 🔥 Bouton Demo -->
-        <button class="btn btn-secondary" onclick="scrollToSimulation()">
-          <i class="fas fa-play"></i> Lancer une Démo
+        <button class="btn btn-secondary" onclick="scrollToFeatures()">
+          <i class="fas fa-play"></i>  Voir les Fonctionnalités
         </button>
       </div>
     </div>
@@ -120,7 +112,7 @@
 
 
   <!-- ================= FONCTIONNALITÉS ================= -->
-  <section class="features">
+  <section class="features" id = "features">
     <div class="container">
       <h2>✨ Fonctionnalités</h2>
 
@@ -164,42 +156,6 @@
     </div>
   </section>
 
-
-  <!-- ================= SIMULATION ================= -->
-  <section class="demo-section" id="demo">
-    <div class="container">
-      <h2>Lancer une Simulation</h2>
-
-      <div class="demo-form">
-        <div class="form-group">
-          <label for="nb-livreurs">Nombre de Livreurs</label>
-          <input type="number" id="nb-livreurs" value="5" min="1" max="20" />
-        </div>
-
-        <div class="form-group">
-          <label for="nb-commandes">Nombre de Commandes</label>
-          <input type="number" id="nb-commandes" value="20" min="1" max="100" />
-        </div>
-
-        <div class="form-group">
-          <label for="scenario">Scénario</label>
-          <select id="scenario">
-            <option value="normal">Normal</option>
-            <option value="pic">Pic d'Activité</option>
-            <option value="incident">Avec Incidents</option>
-          </select>
-        </div>
-
-        <button class="btn btn-primary" onclick="lancerOptimisation()">
-          <i class="fas fa-rocket"></i> Optimiser
-        </button>
-      </div>
-
-      <div id="resultat-demo" class="demo-result"></div>
-    </div>
-  </section>
-
-
   <footer class="footer">
     <div class="container">
       <p>&copy; 2024 Smart Delivery - Projet d'Optimisation</p>
@@ -211,48 +167,8 @@
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 
 <script>
-    function scrollToSimulation() {
-        document.getElementById("demo").scrollIntoView({ behavior: "smooth" });
-    }
-
-    async function lancerOptimisation() {
-        const nbLivreurs = document.getElementById("nb-livreurs").value;
-        const nbCommandes = document.getElementById("nb-commandes").value;
-        const scenario = document.getElementById("scenario").value;
-
-        const resDiv = document.getElementById("resultat-demo");
-        resDiv.innerHTML = `<div class="loading">⏳ Optimisation en cours...</div>`;
-
-        try {
-            // 🚀 Utilise bien la route backend correcte : /api/optimiser
-            const response = await fetch("/api/optimiser", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    nb_livreurs: parseInt(nbLivreurs),
-                    nb_commandes: parseInt(nbCommandes),
-                    scenario: scenario
-                }),
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                resDiv.innerHTML = `
-                    <div class="success">
-                        <h3>✅ Optimisation Réussie !</h3>
-                        <p><strong>Score / Coût total :</strong> ${data.score}</p>
-                        <p><strong>Trajets générés :</strong> ${data.nb_trajets}</p>
-                        <a href="/dashboard" class="btn btn-primary">Voir le Dashboard</a>
-                    </div>
-                `;
-            } else {
-                resDiv.innerHTML = `<div class="error">❌ Erreur: ${data.error}</div>`;
-            }
-
-        } catch (err) {
-            resDiv.innerHTML = `<div class="error">❌ Erreur de connexion</div>`;
-        }
+    function scrollToFeatures() {
+        document.getElementById("features").scrollIntoView({ behavior: "smooth" });
     }
 </script>
 

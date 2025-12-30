@@ -23,10 +23,43 @@
             width: 260px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.25);
         }
+
+        /* ===== LOGOUT BTN ===== */
+        .logout-btn{
+            padding:10px 18px;
+            border-radius:8px;
+            background:#e63946;
+            color:white;
+            border:none;
+            cursor:pointer;
+        }
+
+        .logout-btn:hover{
+            background:#c1121f;
+        }
     </style>
 </head>
 
 <body>
+
+<nav class="navbar">
+ <div class="nav-container">
+  <div class="logo"><i class="fas fa-box"></i><span>Smart Delivery</span></div>
+
+  <ul class="nav-menu">
+   <li><a href="/dashboard">Dashboard</a></li>
+   <li><a href="/carte"  class="active" >Carte</a></li>
+   <li><a href="/livreurs">Livreurs</a></li>
+   <li><a href="/commandes">Commandes</a></li>
+   <li>
+      <button class="logout-btn" onclick="window.location='/logout'">
+        <i class="fas fa-sign-out-alt"></i> Déconnexion
+      </button>
+    </li>
+  </ul>
+
+ </div>
+</nav>
 
 <div class="map-controls">
     <h3>🗺️ Trajets</h3>

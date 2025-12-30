@@ -31,6 +31,7 @@ body{ background:#f5f7ff; }
     color:#007bff;
 }
 
+/* ===== LOGOUT ===== */
 .logout-wrapper{
     width:100%;
     display:flex;
@@ -65,7 +66,7 @@ body{ background:#f5f7ff; }
     margin-top:15px;
 }
 
-/* Centre tout le contenu */
+/* Centrer contenu */
 .data-table th,
 .data-table td{
     text-align:center;
@@ -86,7 +87,7 @@ body{ background:#f5f7ff; }
     border-bottom:1px solid #ddd;
 }
 
-/* Effet hover plus propre */
+/* Effet hover */
 .data-table tbody tr:hover{
     background:#f1f5ff;
 }
@@ -102,6 +103,18 @@ body{ background:#f5f7ff; }
 .livree{ background:#28a745; }
 .reportee{ background:#ff5e00; }
 
+/* Boutons */
+.btn{
+    padding:8px 14px;
+    border-radius:8px;
+    border:none;
+    color:white;
+    cursor:pointer;
+}
+
+.green{ background:#2ecc71; }
+.orange{ background:#ff9800; }
+
 </style>
 </head>
 
@@ -116,9 +129,6 @@ body{ background:#f5f7ff; }
         </div>
 
         <ul class="nav-menu">
-            <li><a href="/">Accueil</a></li>
-
-            <!-- 🔥 NOUVEAU LIEN -->
             <li><a href="#">Visualisation Trajet</a></li>
         </ul>
     </div>
@@ -163,6 +173,7 @@ body{ background:#f5f7ff; }
         </table>
     </div>
 
+    <!-- LOGOUT -->
     <div class="logout-wrapper">
         <button class="logout-btn" onclick="window.location='/logout'">
             <i class="fas fa-sign-out-alt"></i> Déconnexion
@@ -195,7 +206,7 @@ async function chargerCommandes(){
             <td>${c.priorite}</td>
 
             <td>
-                ${c.client_email ? c.client_email : "—"}
+                ${c.client_tel ? c.client_tel : "—"}
             </td>
 
             <td>
@@ -218,7 +229,6 @@ async function chargerCommandes(){
 }
 
 async function changerStatut(id, statut){
-
     await fetch(`/api/commandes/${id}/status`,{
         method:"PUT",
         headers:{ "Content-Type":"application/json"},

@@ -13,7 +13,7 @@ from src.interface.api.app import get_db
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 # =====================================================
-#  STOCKAGE EN MÉMOIRE (POUR LEAFLET)
+#  STOCKAGE EN MÉMOIRE (POUR DASHBOARD + CARTE)
 # =====================================================
 _LAST_OPTIMISATION = None
 
@@ -61,7 +61,7 @@ def optimiser():
 
     try:
         # =====================================================
-        # 1️⃣ LECTURE DB
+        # DB
         # =====================================================
         db = get_db()
         cursor = db.cursor(dictionary=True)
@@ -81,6 +81,7 @@ def optimiser():
                 "error": "Pas de données suffisantes"
             }), 400
 
+        # OBJETS LIVREURS
         livreurs = [
             Livreur(
                 id=l["id"],
@@ -99,6 +100,7 @@ def optimiser():
             ) for l in livreurs_db
         ]
 
+        # OBJETS COMMANDES
         commandes = [
             Commande(
                 id=c["id"],
@@ -118,19 +120,17 @@ def optimiser():
         ]
 
         # =====================================================
-        # 2️⃣ AFFECTATION (BRANCH & BOUND)
+        # AFFECTATION
         # =====================================================
         manager = AffectationManager()
-        result_aff = manager.affecter_commandes(
-            livreurs, commandes
-        )
+        result_aff = manager.affecter_commandes_branch_and_bound(livreurs, commandes)
 
         affectations = result_aff["affectations"]
         non_affectees = result_aff["non_affectees"]
-        score = result_aff.get("total_cost", 0)
+        score = result_aff["total_cost"]
 
         # =====================================================
-        # 3️⃣ UPDATE DB (livreur_id)
+        # UPDATE DB
         # =====================================================
         db = get_db()
         cursor = db.cursor()
@@ -149,13 +149,13 @@ def optimiser():
         db.close()
 
         # =====================================================
-        # 4️⃣ ROUTING (OSRM + GA)
+        # ROUTAGE
         # =====================================================
         print("🛣 Calcul des trajets optimisés…")
         trajets = compute_routes(affectations)
 
         # =====================================================
-        # 5️⃣ SÉRIALISATION
+        # SÉRIALISATION
         # =====================================================
         def serial(x):
             if hasattr(x, "to_dict"):
@@ -172,15 +172,13 @@ def optimiser():
             "message": "Optimisation réussie",
             "nb_trajets": len([c for c in affectations.values() if c]),
             "score": float(score),
-
             "affectations": affectations_json,
             "trajets_optimises": trajets,
             "non_affectees": [serial(c) for c in non_affectees],
         }
 
-        # =====================================================
-        # 6️⃣ STOCKAGE POUR LEAFLET
-        # =====================================================
+        # STOCKAGE POUR DASHBOARD + CARTE
+        global _LAST_OPTIMISATION
         _LAST_OPTIMISATION = result
 
         return jsonify(result)
@@ -194,14 +192,10 @@ def optimiser():
 
 
 # =====================================================
-#  API CARTE LEAFLET
+#  API CARTE LEAFLET (ROUTES SEULEMENT)
 # =====================================================
 @api_bp.get("/trajets")
 def get_trajets():
-    """
-    Retourne uniquement les trajets OSRM
-    pour l'affichage Leaflet
-    """
     if not _LAST_OPTIMISATION:
         return jsonify({"trajets": {}})
 
@@ -211,3 +205,17 @@ def get_trajets():
     return jsonify({
         "trajets": routes
     })
+
+
+# =====================================================
+#  API RÉSULTAT COMPLET POUR DASHBOARD
+# =====================================================
+@api_bp.get("/resultat")
+def get_last_result():
+    if not _LAST_OPTIMISATION:
+        return jsonify({
+            "success": False,
+            "message": "Aucune optimisation encore réalisée"
+        })
+
+    return jsonify(_LAST_OPTIMISATION)

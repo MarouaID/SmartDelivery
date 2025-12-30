@@ -171,6 +171,20 @@
         z-index:2000;
     }
 
+    /* ===== LOGOUT BTN ===== */
+    .logout-btn{
+        padding:10px 18px;
+        border-radius:8px;
+        background:#e63946;
+        color:white;
+        border:none;
+        cursor:pointer;
+    }
+
+    .logout-btn:hover{
+        background:#c1121f;
+    }
+
   </style>
 </head>
 
@@ -178,21 +192,22 @@
 
 <!-- NAVBAR -->
 <nav class="navbar">
-  <div class="nav-container">
-    <div class="logo">
-      <i class="fas fa-truck"></i>
-      <span>Smart Delivery</span>
-    </div>
+ <div class="nav-container">
+  <div class="logo"><i class="fas fa-box"></i><span>Smart Delivery</span></div>
 
-    <ul class="nav-menu">
-      <li><a href="/">Accueil</a></li>
-      <li><a href="/dashboard">Dashboard</a></li>
-      <li><a href="/carte">Carte</a></li>
-      <li><a href="/livreurs" class="active">Livreurs</a></li>
-      <li><a href="/commandes">Commandes</a></li>
-      <li><a href="/suivi">Suivi Temps Réel</a></li>
-    </ul>
-  </div>
+  <ul class="nav-menu">
+   <li><a href="/dashboard">Dashboard</a></li>
+   <li><a href="/carte">Carte</a></li>
+   <li><a href="/livreurs" class="active" >Livreurs</a></li>
+   <li><a href="/commandes">Commandes</a></li>
+   <li>
+      <button class="logout-btn" onclick="window.location='/logout'">
+        <i class="fas fa-sign-out-alt"></i> Déconnexion
+      </button>
+    </li>
+  </ul>
+
+ </div>
 </nav>
 
 
