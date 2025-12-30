@@ -1,156 +1,98 @@
-"""
-Gestion de l'affectation des commandes aux livreurs
-Algorithmes: Glouton, Hongrois
-Responsable: Personne 1
-"""
-
-from typing import List, Dict, Tuple
+#Affectation
+from typing import List, Dict
+import numpy as np
+from sklearn.cluster import KMeans
 from src.models import Commande, Livreur
 from src.utils import DistanceCalculator
-import numpy as np
 
 
 class AffectationManager:
-    """Gère l'affectation optimale des commandes aux livreurs"""
-    
-    def __init__(self):
-        self.distance_calc = DistanceCalculator()
-        self.affectations = {}
-        self.capacites_restantes = {}
-        self.scores_affectation = {}
-    
-    def calculer_score_affectation(self, livreur: Livreur, commande: Commande) -> float:
-        """
-        Calcule un score d'affectation [0, 1] basé sur:
-        - Distance livreur-commande (40%)
-        - Priorité de la commande (30%)
-        - Capacité disponible du livreur (30%)
-        
-        Plus le score est élevé, meilleure est l'affectation
-        """
-        # Score de distance (inverse)
-        distance = self.distance_calc.haversine(
-            livreur.latitude_depart, livreur.longitude_depart,
-            commande.latitude, commande.longitude
+
+    def __init__(self, num_zones: int = 50):
+        self.dist = DistanceCalculator()
+        self.num_zones = num_zones
+
+    # =========================
+    # SCORE [0 – 1]
+    # =========================
+    def score(self, livreur: Livreur, commande: Commande) -> float:
+        if not livreur.disponible:
+            return 0
+        if commande.poids > livreur.capacite_poids:
+            return 0
+        if commande.volume > livreur.capacite_volume:
+            return 0
+
+        d = self.dist.haversine(
+            livreur.latitude_depart,
+            livreur.longitude_depart,
+            commande.latitude,
+            commande.longitude
         )
-        score_distance = 1 / (1 + distance)
-        
-        # Score de priorité (urgent = meilleur)
+        score_distance = 1 / (1 + d)
         score_priorite = (4 - commande.priorite) / 3
-        
-        # Score de capacité (vérifier qu'on peut livrer)
-        cap_restante = self.capacites_restantes.get(livreur.id, {
-            'poids': livreur.capacite_poids,
-            'volume': livreur.capacite_volume
-        })
-        
-        if cap_restante['poids'] < commande.poids or cap_restante['volume'] < commande.volume:
-            return 0.0  # Impossible
-        
-        score_capacite = min(
-            cap_restante['poids'] / commande.poids,
-            cap_restante['volume'] / commande.volume
-        )
-        
-        # Score global pondéré
-        score_final = (0.4 * score_distance + 
-                      0.3 * score_priorite + 
-                      0.3 * min(score_capacite, 1.0))
-        
-        return score_final
-    
-    def _initialiser_capacites(self, livreurs: List[Livreur]):
-        """Initialise les capacités restantes pour chaque livreur"""
-        self.capacites_restantes = {
-            l.id: {
-                'poids': l.capacite_poids,
-                'volume': l.capacite_volume
-            }
-            for l in livreurs
-        }
-    
-    def affecter_commandes_glouton(self, livreurs: List[Livreur], 
-                                   commandes: List[Commande]) -> Dict[str, List[Commande]]:
-        """
-        Algorithme glouton d'affectation:
-        1. Trier les commandes par priorité
-        2. Pour chaque commande, choisir le meilleur livreur disponible
-        3. Affecter et mettre à jour les capacités
-        
-        Retourne: Dict[livreur_id] -> List[Commande]
-        """
-        self._initialiser_capacites(livreurs)
-        self.affectations = {l.id: [] for l in livreurs}
-        self.scores_affectation = {}
-        
-        # Trier par priorité (1=urgent avant 3=flexible)
-        commandes_triees = sorted(commandes, key=lambda c: c.priorite)
-        
-        for commande in commandes_triees:
-            meilleur_livreur = None
-            meilleur_score = -1
-            
-            for livreur in livreurs:
-                if not livreur.disponible:
-                    continue
-                
-                score = self.calculer_score_affectation(livreur, commande)
-                
-                if score > meilleur_score:
-                    meilleur_score = score
-                    meilleur_livreur = livreur
-            
-            # Affecter si un livreur valide trouvé
-            if meilleur_livreur and meilleur_score > 0:
-                self.affectations[meilleur_livreur.id].append(commande)
-                self.scores_affectation[commande.id] = meilleur_score
-                
-                # Réduire les capacités
-                self.capacites_restantes[meilleur_livreur.id]['poids'] -= commande.poids
-                self.capacites_restantes[meilleur_livreur.id]['volume'] -= commande.volume
-                
-                commande.statut = "assignee"
-            else:
-                print(f"⚠️ Impossible d'affecter la commande {commande.id}")
-        
-        return self.affectations
-    
-    def creer_matrice_couts(self, livreurs: List[Livreur], 
-                           commandes: List[Commande]) -> np.ndarray:
-        """
-        Crée une matrice de coûts pour l'algorithme hongrois
-        matrice[i][j] = coût d'affecter commande j au livreur i
-        """
-        n_livreurs = len(livreurs)
-        n_commandes = len(commandes)
-        
-        # Matrice carrée (compléter avec des valeurs infinies si besoin)
-        taille = max(n_livreurs, n_commandes)
-        matrice = np.full((taille, taille), 1e6)  # Valeur très élevée
-        
-        for i, livreur in enumerate(livreurs):
-            for j, commande in enumerate(commandes):
-                score = self.calculer_score_affectation(livreur, commande)
-                # Convertir score [0,1] en coût (inverser)
-                matrice[i][j] = 1 - score if score > 0 else 1e6
-        
-        return matrice
-    
-    def obtenir_statistiques(self) -> dict:
-        """Retourne les statistiques d'affectation"""
-        total_commandes_affectees = sum(len(cmds) for cmds in self.affectations.values())
-        
-        stats = {
-            'total_commandes_affectees': total_commandes_affectees,
-            'livreurs_utilises': sum(1 for cmds in self.affectations.values() if len(cmds) > 0),
-            'score_moyen': np.mean(list(self.scores_affectation.values())) if self.scores_affectation else 0,
-            'repartition': {
-                livreur_id: len(cmds) 
-                for livreur_id, cmds in self.affectations.items()
-            }
-        }
-        
-        return stats
-    
-    def __repr__(self):
-        return f"AffectationManager(affectations={len(self.affectations)})"
+        return 0.6 * score_distance + 0.4 * score_priorite
+
+    # =========================
+    # OPTIMISATION TSP GREEDY
+    # =========================
+    def optimize_tour_greedy(self, livreur: Livreur, commandes: List[Commande]) -> List[Commande]:
+        tour = []
+        remaining = commandes.copy()
+        cur_lat = livreur.latitude_depart
+        cur_lon = livreur.longitude_depart
+
+        while remaining:
+            next_c = min(
+                remaining,
+                key=lambda c: self.dist.haversine(cur_lat, cur_lon, c.latitude, c.longitude)
+            )
+            tour.append(next_c)
+            remaining.remove(next_c)
+            cur_lat, cur_lon = next_c.latitude, next_c.longitude
+
+        return tour
+
+    # =========================
+    # CLUSTERING DES COMMANDES
+    # =========================
+    def cluster_commandes(self, commandes: List[Commande]):
+        if len(commandes) <= self.num_zones:
+            # Chaque commande devient sa propre zone
+            return {i: [c] for i, c in enumerate(commandes)}
+
+        coords = np.array([(c.latitude, c.longitude) for c in commandes])
+        kmeans = KMeans(n_clusters=self.num_zones, random_state=42, n_init=10).fit(coords)
+        zones = {i: [] for i in range(self.num_zones)}
+        for idx, label in enumerate(kmeans.labels_):
+            zones[label].append(commandes[idx])
+        return zones
+
+    # =========================
+    # PIPELINE SCALABLE
+    # =========================
+    def affectation_scalable(self, livreurs: List[Livreur], commandes: List[Commande]) -> Dict[str, List[Commande]]:
+        affectations = {l.id: [] for l in livreurs}
+
+        # Cluster des commandes
+        zones = self.cluster_commandes(commandes)
+
+        # Affectation greedy par zone
+        for zone_cmds in zones.values():
+            for c in zone_cmds:
+                # Choisir le meilleur livreur disponible
+                best_l = max(
+                    [l for l in livreurs if l.disponible
+                     and l.capacite_poids >= c.poids
+                     and l.capacite_volume >= c.volume],
+                    key=lambda l: self.score(l, c),
+                    default=None
+                )
+                if best_l:
+                    affectations[best_l.id].append(c)
+
+        # Optimisation TSP locale pour chaque livreur
+        for l in livreurs:
+            affectations[l.id] = self.optimize_tour_greedy(l, affectations[l.id])
+
+        return affectations
