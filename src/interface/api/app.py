@@ -8,7 +8,7 @@ def get_db():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="",
+        password="Alaa2021",
         database="smart_delivery"
     )
 
@@ -226,6 +226,7 @@ def create_app():
         return jsonify(rows)
 
 
+
     @app.route("/api/commandes", methods=["POST"])
     def add_commande():
         data = request.json
@@ -411,6 +412,12 @@ def create_app():
         db.close()
 
         return jsonify({"success": True})
+    
+    @app.route("/livreur/map")
+    def livreur_map():
+        if "livreur" not in session:
+            return redirect("/login")
+        return render_template("livreurMap.html")
 
 
     from src.interface.api.routes import api_bp

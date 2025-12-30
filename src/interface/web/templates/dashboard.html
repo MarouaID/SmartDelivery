@@ -238,9 +238,10 @@ async function chargerDashboard() {
         const routes = (data.trajets_optimises.routes || {});
 
         Object.values(routes).forEach(r => {
-            totalDistance += r.metriques.distance_km || 0;
-            totalCout += r.metriques.cout_euro || 0;
+            totalDistance += r.distance_km || 0;
+            totalCout += r.cost || 0;
         });
+
 
         document.getElementById("stat-distance").textContent =
             totalDistance.toFixed(2) + " km";
@@ -259,7 +260,6 @@ async function chargerDashboard() {
     }
 }
 
-
 function afficherTrajets(trajets) {
     const tbody = document.getElementById("tbody-trajets");
     tbody.innerHTML = "";
@@ -268,14 +268,14 @@ function afficherTrajets(trajets) {
         tbody.innerHTML += `
         <tr>
             <td><strong>${livreurId}</strong></td>
-            <td>${trajet.commandes.length}</td>
-            <td>${trajet.metriques.distance_km.toFixed(2)}</td>
-            <td>${trajet.metriques.temps_minutes}</td>
-            <td>${trajet.metriques.cout_euro.toFixed(2)}</td>
-            <td>${trajet.horaires.depart}</td>
-            <td>${trajet.horaires.retour_estime}</td>
+            <td>${trajet.ordre_livraison.length}</td>
+            <td>${trajet.distance_km.toFixed(2)}</td>
+            <td>${trajet.duree_min}</td>
+            <td>${trajet.cost.toFixed(2)}</td>
+            <td>${trajet.heure_debut_tour}</td>
+            <td>${trajet.heure_fin_tour}</td>
             <td>
-                <button class="btn-small" onclick="voirDetails('${livreurId}')">
+                    <button class="btn-small" onclick="lancerSUMO('${livreurId}')">
                     <i class="fas fa-eye"></i>
                 </button>
             </td>
@@ -283,13 +283,12 @@ function afficherTrajets(trajets) {
     }
 }
 
-
 function creerGraphiques(trajets) {
     const livreurs = Object.keys(trajets);
-    const nbCommandes = livreurs.map(id => trajets[id].commandes.length);
-    const temps = livreurs.map(id => trajets[id].metriques.temps_minutes);
+    const nbCommandes = livreurs.map(id => trajets[id].ordre_livraison.length);
+    const temps = livreurs.map(id => trajets[id].duree_min);
 
-    // ===== BAR =====
+    // BAR
     const ctx1 = document.getElementById("chartCommandes");
     if (chartCommandes) chartCommandes.destroy();
 
@@ -305,7 +304,7 @@ function creerGraphiques(trajets) {
         }
     });
 
-    // ===== LINE =====
+    // LINE
     const ctx2 = document.getElementById("chartTemps");
     if (chartTemps) chartTemps.destroy();
 
@@ -322,7 +321,6 @@ function creerGraphiques(trajets) {
         }
     });
 }
-
 
 // ===== OPTIM BUTTON =====
 async function lancerOptimisationDashboard() {
@@ -372,6 +370,22 @@ document.addEventListener("DOMContentLoaded", () => {
 chargerDashboard();
 
 </script>
+
+<script>
+async function lancerSUMO(livreurId) {
+    try {
+        await fetch(`/api/sumo/replay/${livreurId}`, {
+            method: "POST"
+        });
+
+        alert(" Simulation SUMO lancée pour " + livreurId);
+
+    } catch (e) {
+        alert("Impossible de lancer SUMO");
+    }
+}
+</script>
+
 
 </body>
 </html>

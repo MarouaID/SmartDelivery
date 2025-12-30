@@ -83,8 +83,16 @@ def compute_routes(affectations: Dict[str, List[Any]]) -> Dict[str, Any]:
         # ---------------------------
         # 4) Calcul routing complet
         # ---------------------------
+        print("\n=== ROUTING DEBUG ===")
+        print("Livreur:", liv_id)
+        print("Nb commandes:", len(commandes))
+        for c in commandes:
+            print(" - CMD", c.id, c.latitude, c.longitude)
+
         route_info = optimizer.generate_route(livreur, commandes)
         routes_result[liv_id] = route_info
+        print("ROUTE RESULT:", route_info)
+        print("====================\n")
 
     return {
         "success": True,

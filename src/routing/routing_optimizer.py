@@ -36,6 +36,11 @@ def minutes_to_hhmm(m):
 class RoutingOptimizer:
 
     def generate_route(self, livreur: Livreur, commandes: List[Commande]) -> Dict[str, Any]:
+        print("\n>>> generate_route() CALLED")
+        print("Livreur:", livreur.id)
+        print("Start:", livreur.latitude_depart, livreur.longitude_depart)
+        print("Cout / km:", livreur.cout_km)
+        print("Nb commandes:", len(commandes))
 
         # -------------------------------------------------
         # 1) Coordonnées
@@ -89,6 +94,7 @@ class RoutingOptimizer:
             reportees,
             end_min
         ) = self._compute_osrm(route_ga, coords, livreur, commandes)
+        total_cost = dist_osrm * livreur.cout_km
 
         # -------------------------------------------------
         # 5) Géométrie réelle OSRM
@@ -98,9 +104,19 @@ class RoutingOptimizer:
         # -------------------------------------------------
         # 6) Résultat final
         # -------------------------------------------------
+        print("DISTANCE KM:", dist_osrm)
+        print("DURATION MIN:", time_osrm)
+        print("COST:", total_cost)
+        print("<<< generate_route() END\n")
+
         return {
             "livreur_id": livreur.id,
             "ordre_livraison": ordre_ids,
+
+            "distance_km": round(dist_osrm, 2),
+            "duree_min": int(time_osrm),
+            "cost": round(total_cost, 2),
+
             "distance_osrm": dist_osrm,
             "temps_osrm": time_osrm,
             "points_gps": points_gps,
@@ -110,6 +126,7 @@ class RoutingOptimizer:
             "heure_debut_tour": livreur.heure_debut,
             "heure_fin_tour": minutes_to_hhmm(end_min),
         }
+
 
     # =====================================================
     # OSRM + FIN DE JOURNÉE
