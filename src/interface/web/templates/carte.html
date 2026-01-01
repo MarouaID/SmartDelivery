@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Carte - Smart Delivery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    #map { height: calc(100vh - 60px); width: 100%; }
+
+    .map-controls{
+      position:absolute;
+      top:80px; left:20px;
+      width:310px;
+      background:white;
+      padding:16px;
+      border-radius:12px;
+      z-index:1000;
+      box-shadow:0 8px 26px rgba(0,0,0,0.18);
+      border:1px solid #eef1ff;
+    }
+
+    .map-controls h3{
+      margin:0 0 10px 0;
+      font-size:18px;
+      display:flex; gap:10px; align-items:center;
+    }
+
+    .row{ margin-top:10px; }
+    label{ font-size:13px; color:#444; display:block; margin-bottom:6px; }
+
+    select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid #dbe1ff;
+      outline:none;
+      background:#fbfcff;
+    }
+    select:focus{ border-color:#0d6efd; }
+
+    .toggles{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top:12px;
+      font-size:13px;
+      color:#333;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      margin-top:12px;
+    }
+    .btn{
+      flex:1;
+      border:none;
+      padding:10px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+      font-size:13px;
+    }
+    .btn-primary{ background:#0d6efd; color:white; }
+    .btn-primary:hover{ background:#0b5ed7; }
+    .btn-light{ background:#f1f4ff; color:#223; }
+    .btn-light:hover{ background:#e8edff; }
+
+    .hint{
+      margin-top:10px;
+      font-size:12px;
+      color:#667;
+      line-height:1.3;
+    }
+
+    .legend{
+      margin-top:12px;
+      padding-top:10px;
+      border-top:1px solid #eef1ff;
+      font-size:12px;
+      color:#444;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+    }
+    .legend-item{ display:flex; gap:8px; align-items:center; }
+    .dot{ width:12px; height:12px; border-radius:50%; display:inline-block; }
+
+    .logout-btn{
+      padding:10px 18px;
+      border-radius:8px;
+      background:#e63946;
+      color:white;
+      border:none;
+      cursor:pointer;
+    }
+    .logout-btn:hover{ background:#c1121f; }
+  </style>
+</head>
+
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo"><i class="fas fa-box"></i><span>Smart Delivery</span></div>
+    <ul class="nav-menu">
+      <li><a href="/dashboard">Dashboard</a></li>
+      <li><a href="/carte" class="active">Carte</a></li>
+      <li><a href="/livreurs">Livreurs</a></li>
+      <li><a href="/commandes">Commandes</a></li>
+      <li>
+        <button class="logout-btn" onclick="window.location='/logout'">
+          <i class="fas fa-sign-out-alt"></i> Déconnexion
+        </button>
+      </li>
+    </ul>
+  </div>
+</nav>
+
+<div class="map-controls">
+  <h3>🗺️ Visualisation Trajets</h3>
+
+  <div class="row">
+    <label>Livreur</label>
+    <select id="select-livreur">
+      <option value="ALL">Tous</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <label>Algorithme</label>
+    <select id="select-algo">
+      <option value="genetic">Génétique (GA)</option>
+      <option value="3opt">3-Opt</option>
+      <option value="2opt">2-Opt</option>
+      <option value="nearest">Nearest Neighbor</option>
+    </select>
+  </div>
+
+  <div class="toggles">
+    <label style="display:flex;gap:8px;align-items:center;margin:0;">
+      <input type="checkbox" id="show-commandes" checked>
+      Commandes
+    </label>
+
+    <label style="display:flex;gap:8px;align-items:center;margin:0;">
+      <input type="checkbox" id="show-depot" checked>
+      Dépôt (unique)
+    </label>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-light" id="btn-refresh">
+      <i class="fas fa-sync"></i> Recharger
+    </button>
+    <button class="btn btn-primary" id="btn-center">
+      <i class="fas fa-crosshairs"></i> Centrer
+    </button>
+  </div>
+
+  <div class="hint" id="hintText">
+    ✅ Si <code>route_geometry</code> est disponible, la route est courbée (OSRM).<br>
+    ℹ️ Sinon, fallback en segments droits.
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot" style="background:#E91E63"></span> GA</div>
+    <div class="legend-item"><span class="dot" style="background:#4CAF50"></span> 3-Opt</div>
+    <div class="legend-item"><span class="dot" style="background:#03A9F4"></span> 2-Opt</div>
+    <div class="legend-item"><span class="dot" style="background:#9E9E9E"></span> Nearest</div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<script>
+/* =========================
+   CONFIG: ONE DEPOT ONLY
+========================= */
+const DEPOT = [31.63, -7.99]; // [lat, lon]
+
+const COLORS = {
+  genetic: "#E91E63",
+  "3opt": "#4CAF50",
+  "2opt": "#03A9F4",
+  nearest: "#9E9E9E"
+};
+
+let map;
+
+/* =========================
+   STATE
+========================= */
+const S = {
+  trajets: {},
+  commandes: [],
+  cmdById: {},
+
+  depotMarker: null,
+
+  routeLayers: {}, // routeLayers[livreurId][algo] = polyline
+  stopLayers: {},  // stopLayers[livreurId][algo] = [markers]
+
+  livVal: "ALL",
+  algoVal: "genetic"
+};
+
+/* =========================
+   MAP INIT
+========================= */
+function initMap(){
+  map = L.map("map").setView(DEPOT, 12);
+
+  const boundsMaroc = L.latLngBounds([20,-17.5],[36.5,-0.5]);
+  map.setMaxBounds(boundsMaroc);
+  map.setMinZoom(6);
+
+  map.createPane("routes");
+  map.createPane("stops");
+  map.createPane("depot");
+
+  map.getPane("routes").style.zIndex = 400;
+  map.getPane("depot").style.zIndex = 550;
+  map.getPane("stops").style.zIndex = 600;
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    attribution:"© OpenStreetMap"
+  }).addTo(map);
+}
+
+/* =========================
+   ICONS
+========================= */
+function depotIcon(){
+  return L.divIcon({
+    html: `
+      <div style="
+        width:38px;height:38px;background:#1E88E5;border-radius:50%;
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 0 10px rgba(0,0,0,0.35);
+        border:3px solid white;
+      ">
+        <i class="fas fa-warehouse" style="color:white;font-size:16px;"></i>
+      </div>
+    `,
+    className:"",
+    iconSize:[38,38],
+    iconAnchor:[19,19]
+  });
+}
+
+function stopIcon(n, algo){
+  const color = COLORS[algo] || "#333";
+  return L.divIcon({
+    html: `
+      <div style="
+        width:30px;height:30px;border-radius:50%;
+        background:${color};
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 0 8px rgba(0,0,0,0.35);
+        border:2px solid white;
+        font-weight:800;color:white;font-size:12px;
+      ">
+        ${n}
+      </div>
+    `,
+    className:"",
+    iconSize:[30,30],
+    iconAnchor:[15,15]
+  });
+}
+
+/* =========================
+   FETCH HELPERS
+========================= */
+async function safeJson(url){
+  const res = await fetch(url);
+  try { return await res.json(); } catch(e) { return {}; }
+}
+
+function extractTrajets(payload){
+  return payload.trajets || payload.routes || payload || {};
+}
+
+function extractCommandes(payload){
+  // your API sometimes returns {commandes:{commandes:[...]}}
+  // or {commandes:[...]}
+  if(payload.commandes && Array.isArray(payload.commandes)) return payload.commandes;
+  if(payload.commandes && payload.commandes.commandes && Array.isArray(payload.commandes.commandes)) return payload.commandes.commandes;
+  return payload.commandes || payload || [];
+}
+
+/* =========================
+   CLEAR LAYERS
+========================= */
+function clearLayers(){
+  if(S.depotMarker && map.hasLayer(S.depotMarker)) map.removeLayer(S.depotMarker);
+  S.depotMarker = null;
+
+  Object.values(S.routeLayers).forEach(byAlgo=>{
+    Object.values(byAlgo).forEach(poly=>{
+      if(map.hasLayer(poly)) map.removeLayer(poly);
+    });
+  });
+
+  Object.values(S.stopLayers).forEach(byAlgo=>{
+    Object.values(byAlgo).forEach(list=>{
+      list.forEach(m => map.hasLayer(m) && map.removeLayer(m));
+    });
+  });
+
+  S.routeLayers = {};
+  S.stopLayers = {};
+}
+
+/* =========================
+   BUILD UI
+========================= */
+function buildUI(){
+  const selLiv = document.getElementById("select-livreur");
+  const selAlgo = document.getElementById("select-algo");
+
+  const ids = Object.keys(S.trajets);
+  selLiv.innerHTML = `<option value="ALL">Tous</option>` + ids.map(id=>{
+    return `<option value="${id}">${id}</option>`;
+  }).join("");
+
+  selLiv.value = ids.includes(S.livVal) ? S.livVal : "ALL";
+  selAlgo.value = S.algoVal;
+
+  selLiv.onchange = ()=>{
+    S.livVal = selLiv.value;
+    applyVisibility();
+    centerVisible();
+  };
+
+  selAlgo.onchange = ()=>{
+    S.algoVal = selAlgo.value;
+    applyVisibility();
+    centerVisible();
+  };
+
+  document.getElementById("show-commandes").onchange = applyVisibility;
+
+  document.getElementById("show-depot").onchange = ()=>{
+    const show = document.getElementById("show-depot").checked;
+    if(!S.depotMarker) return;
+    if(show) S.depotMarker.addTo(map);
+    else if(map.hasLayer(S.depotMarker)) map.removeLayer(S.depotMarker);
+  };
+
+  document.getElementById("btn-refresh").onclick = loadAll;
+  document.getElementById("btn-center").onclick = centerVisible;
+}
+
+/* =========================
+   DEPOT (ONE)
+========================= */
+function buildDepot(){
+  S.depotMarker = L.marker(DEPOT,{
+    icon: depotIcon(),
+    pane: "depot",
+    zIndexOffset: 999
+  }).bindPopup("<b>Dépôt unique</b><br>Warehouse / Point de départ");
+
+  if(document.getElementById("show-depot").checked){
+    S.depotMarker.addTo(map);
+  }
+}
+
+/* =========================
+   HELPERS: get geometry / order by algo
+========================= */
+function getSolutionForAlgo(t, algo){
+  // preferred: meta_solutions[algo] (new format)
+  if(t && t.meta_solutions && t.meta_solutions[algo]) return t.meta_solutions[algo];
+  return null;
+}
+
+function getGeometryLatLngs(sol){
+  // sol.route_geometry is [[lon,lat],...]
+  if(sol && Array.isArray(sol.route_geometry) && sol.route_geometry.length > 1){
+    return sol.route_geometry.map(p => [p[1], p[0]]);
+  }
+  return null;
+}
+
+function getOrderIds(t, sol, algo){
+  // prefer sol.ordre_ids
+  if(sol && Array.isArray(sol.ordre_ids)) return sol.ordre_ids.map(x => String(x).trim());
+
+  // GA compatibility
+  if(algo === "genetic"){
+    if(t && Array.isArray(t.ordre_livraison)) return t.ordre_livraison.map(x => String(x).trim());
+  }
+  return [];
+}
+
+/* =========================
+   BUILD ROUTES + STOPS
+   ✅ KEEP ALL FEATURES
+   ✅ Only change: use OSRM geometry for every algo if provided
+========================= */
+function buildRoutesAndStops(){
+  const algos = ["genetic", "3opt", "2opt", "nearest"];
+
+  for(const [livreurId, t] of Object.entries(S.trajets)){
+    if(!t) continue;
+
+    S.routeLayers[livreurId] = {};
+    S.stopLayers[livreurId] = {};
+
+    for(const algo of algos){
+
+      // ---------- 1) BUILD POLYLINE ----------
+      let poly = null;
+
+      if(algo === "genetic"){
+        // GA compat: route_geometry can be at root OR inside meta_solutions.genetic
+        if(Array.isArray(t.route_geometry) && t.route_geometry.length > 1){
+          const latlngs = t.route_geometry.map(p => [p[1], p[0]]);
+          poly = L.polyline(latlngs,{
+            color: COLORS.genetic,
+            weight: 6,
+            opacity: 0.92,
+            pane: "routes"
+          });
+        } else {
+          const solGA = getSolutionForAlgo(t, "genetic");
+          const latlngs = getGeometryLatLngs(solGA);
+          if(latlngs){
+            poly = L.polyline(latlngs,{
+              color: COLORS.genetic,
+              weight: 6,
+              opacity: 0.92,
+              pane: "routes"
+            });
+          } else if(Array.isArray(t.points_gps) && t.points_gps.length > 1){
+            // fallback points (lat,lon)
+            const latlngs2 = [DEPOT].concat(t.points_gps.slice(1).map(p => [p[0], p[1]]));
+            poly = L.polyline(latlngs2,{
+              color: COLORS.genetic,
+              weight: 6,
+              opacity: 0.92,
+              pane: "routes"
+            });
+          }
+        }
+
+        if(!poly) continue;
+      } else {
+        const sol = getSolutionForAlgo(t, algo);
+        if(!sol) continue;
+
+        // ✅ if backend provided OSRM geometry => curved
+        const geomLatLngs = getGeometryLatLngs(sol);
+        if(geomLatLngs){
+          poly = L.polyline(geomLatLngs,{
+            color: COLORS[algo] || "#000",
+            weight: 4,
+            opacity: 0.85,
+            pane: "routes",
+
+          });
+        } else {
+          // fallback straight segments by ordre_ids
+          const ordre = getOrderIds(t, sol, algo);
+          const latlngs = [DEPOT];
+
+          for(const cmdId of ordre){
+            const cmd = S.cmdById[cmdId];
+            if(!cmd || cmd.latitude == null || cmd.longitude == null) continue;
+            latlngs.push([Number(cmd.latitude), Number(cmd.longitude)]);
+          }
+
+          if(latlngs.length < 2) continue;
+
+          poly = L.polyline(latlngs,{
+            color: COLORS[algo] || "#000",
+            weight: 4,
+            opacity: 0.70,
+            pane: "routes",
+          });
+        }
+      }
+
+      // ✅ IMPORTANT: store poly so selector + visibility works
+      S.routeLayers[livreurId][algo] = poly;
+
+      // ---------- 2) BUILD STOP MARKERS ----------
+      const sol = (algo === "genetic") ? (getSolutionForAlgo(t, "genetic") || {}) : (getSolutionForAlgo(t, algo) || {});
+      const ordreIds = getOrderIds(t, sol, algo);
+
+      const markers = [];
+      let idx = 1;
+
+      for(const cmdId of ordreIds){
+        const cmd = S.cmdById[cmdId];
+        if(!cmd || cmd.latitude == null || cmd.longitude == null) continue;
+
+        const ll = [Number(cmd.latitude), Number(cmd.longitude)];
+        const popupHtml = `
+          <div style="min-width:220px">
+            <div style="font-weight:800;margin-bottom:6px;">📦 Commande ${cmdId}</div>
+            <div><b>Ordre:</b> #${idx}</div>
+            ${cmd.adresse ? `<div><b>Adresse:</b> ${cmd.adresse}</div>` : ``}
+            ${cmd.poids != null ? `<div><b>Poids:</b> ${cmd.poids} kg</div>` : ``}
+            ${cmd.priorite != null ? `<div><b>Priorité:</b> ${cmd.priorite}</div>` : ``}
+            ${cmd.client_nom ? `<div><b>Client:</b> ${cmd.client_nom}</div>` : ``}
+            ${cmd.client_tel ? `<div><b>Téléphone:</b> ${cmd.client_tel}</div>` : ``}
+          </div>
+        `;
+
+        const m = L.marker(ll,{
+          icon: stopIcon(idx, algo),
+          pane: "stops",
+          zIndexOffset: 1000
+        }).bindPopup(popupHtml);
+
+        markers.push(m);
+        idx++;
+      }
+
+      // ✅ IMPORTANT: store markers so toggles work
+      S.stopLayers[livreurId][algo] = markers;
+    }
+  }
+}
+
+/* =========================
+   VISIBILITY
+========================= */
+function applyVisibility(){
+  const showStops = document.getElementById("show-commandes").checked;
+
+  for(const [liv, byAlgo] of Object.entries(S.routeLayers)){
+    for(const [algo, poly] of Object.entries(byAlgo)){
+      const shouldShow =
+        (S.livVal === "ALL" || S.livVal === liv) &&
+        (S.algoVal === algo);
+
+      if(shouldShow){
+        if(!map.hasLayer(poly)) poly.addTo(map);
+      } else {
+        if(map.hasLayer(poly)) map.removeLayer(poly);
+      }
+
+      const stops = (S.stopLayers[liv] && S.stopLayers[liv][algo]) ? S.stopLayers[liv][algo] : [];
+      stops.forEach(m=>{
+        if(shouldShow && showStops){
+          if(!map.hasLayer(m)) m.addTo(map);
+        } else {
+          if(map.hasLayer(m)) map.removeLayer(m);
+        }
+      });
+    }
+  }
+}
+
+/* =========================
+   CENTER VISIBLE
+========================= */
+function centerVisible(){
+  const visibles = [];
+
+  for(const byAlgo of Object.values(S.routeLayers)){
+    for(const poly of Object.values(byAlgo)){
+      if(map.hasLayer(poly)) visibles.push(poly);
+    }
+  }
+
+  if(visibles.length){
+    const group = L.featureGroup(visibles);
+    map.fitBounds(group.getBounds().pad(0.15));
+    return;
+  }
+
+  map.setView(DEPOT, 12);
+}
+
+/* =========================
+   LOAD ALL
+========================= */
+async function loadAll(){
+  clearLayers();
+
+  const trajetsRes = await safeJson("/api/trajets");
+  const commandesRes = await safeJson("/api/commandes");
+
+  S.trajets = extractTrajets(trajetsRes);
+  S.commandes = extractCommandes(commandesRes);
+
+  S.cmdById = {};
+  S.commandes.forEach(c=>{
+    if(c && c.id != null){
+      S.cmdById[String(c.id).trim()] = c;
+    }
+  });
+
+  buildUI();
+  buildDepot();
+  buildRoutesAndStops();
+
+  const ids = Object.keys(S.trajets);
+  if(!ids.includes(S.livVal)) S.livVal = "ALL";
+  S.algoVal = document.getElementById("select-algo").value || "genetic";
+
+  applyVisibility();
+  centerVisible();
+
+  // small hint if no meta geometries
+  const anyMetaGeom = Object.values(S.trajets).some(t =>
+    t && t.meta_solutions && Object.values(t.meta_solutions).some(sol =>
+      sol && Array.isArray(sol.route_geometry) && sol.route_geometry.length > 1
+    )
+  );
+  document.getElementById("hintText").innerHTML = anyMetaGeom
+    ? ` Les trajets utilisent <b>OSRM</b> (courbés) quand <code>route_geometry</code> est disponible.<br>ℹSinon fallback en segments droits.`
+    : `Aucun <code>meta_solutions[*].route_geometry</code> détecté. Les algos non-GA risquent d’être en segments droits.`;
+}
+
+/* =========================
+   BOOT
+========================= */
+initMap();
+loadAll();
+</script>
+
+</body>
+</html>

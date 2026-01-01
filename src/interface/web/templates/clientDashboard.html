@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Client - Smart Delivery</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+
+body{ background:#f5f7ff; }
+
+.page-container{
+    padding:40px;
+    max-width:1100px;
+    margin:auto;
+}
+
+/* ===== INFOS CLIENT ===== */
+.welcome-card{
+    background:white;
+    border-radius:12px;
+    padding:30px;
+    box-shadow:0 10px 40px rgba(0,0,0,.1);
+    margin-top:30px;
+}
+
+.welcome-card h2{
+    color:#007bff;
+}
+
+.logout-wrapper{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    margin-top:30px;
+}
+
+.logout-btn{
+    margin-top:15px;
+    padding:10px 20px;
+    border-radius:8px;
+    background:#e63946;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+.logout-btn:hover{
+    background:#c1121f;
+}
+
+/* ===== TABLE ===== */
+.table-card{
+    margin-top:30px;
+    background:white;
+    padding:25px;
+    border-radius:12px;
+    box-shadow:0 10px 40px rgba(0,0,0,.1);
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    background:#007bff;
+    color:white;
+    padding:14px;
+    text-align:center;
+}
+
+td{
+    padding:12px;
+    text-align:center;
+    border-bottom:1px solid #eee;
+}
+
+tr:hover{
+    background:#f4f7ff;
+}
+
+
+/* ====== STATUS BADGES ====== */
+.status{
+    padding:7px 12px;
+    border-radius:8px;
+    color:white;
+    font-weight:bold;
+}
+
+.en_attente{ background:#9c27b0; }
+.affectee{ background:#2196f3; }
+.livree{ background:#28a745; }
+.reportee{ background:#ff9800; }
+
+/* ===== NOTIFICATIONS ===== */
+.notif-btn{
+    position:relative;
+    color:white;
+    cursor:pointer;
+}
+
+.notif-badge{
+    position:absolute;
+    top:-6px;
+    right:-8px;
+    background:red;
+    padding:3px 7px;
+    border-radius:50%;
+    font-size:11px;
+    color:white;
+}
+
+</style>
+</head>
+
+<body>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <div class="logo">
+            <i class="fas fa-truck"></i>
+            <span>Smart Delivery</span>
+        </div>
+    </div>
+</nav>
+
+
+<div class="page-container">
+
+    <h1>🎉 Tableau de Bord Client</h1>
+
+    <div class="welcome-card">
+        <h2>Bienvenue</h2>
+
+        {% if session.client %}
+            <p><b>ID :</b> {{ session.client.id }}</p>
+            <p><b>Nom :</b> {{ session.client.nom }}</p>
+            <p><b>Email :</b> {{ session.email }}</p>
+        {% else %}
+            <p>Aucune information trouvée.</p>
+        {% endif %}
+
+        
+    </div>
+
+
+    <div class="table-card">
+        <h2>📦 Vos Commandes</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Adresse</th>
+                    <th>Poids</th>
+                    <th>Priorité</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+
+            <tbody id="commandes-body"></tbody>
+        </table>
+    </div>
+
+
+        
+            <div class="logout-wrapper">
+                <button class="logout-btn" onclick="window.location='/logout'">
+                    <i class="fas fa-sign-out-alt"></i> Déconnexion
+                </button>   
+            </div>
+
+    
+
+</div>
+
+
+<script>
+const clientId = "{{ session.client.id if session.client else '' }}";
+
+async function chargerCommandes(){
+
+    const res = await fetch("/api/client/commandes");
+    const data = await res.json();
+
+    const tbody = document.getElementById("commandes-body");
+    tbody.innerHTML = "";
+
+    if(!data.success || data.commandes.length === 0){
+        tbody.innerHTML = `<tr><td colspan="7">Aucune commande trouvée</td></tr>`;
+        return;
+    }
+
+    data.commandes.forEach(c => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${c.id}</td>
+                <td>${c.adresse}</td>
+                <td>${c.poids} kg</td>
+                <td>${c.priorite}</td>
+                <td>
+                    <span class="status ${c.statut}">
+                        ${c.statut}
+                    </span>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+chargerCommandes();
+</script>
+
+
+</body>
+</html>

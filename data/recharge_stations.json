@@ -1,0 +1,137 @@
+[
+  {
+    "id": "R001",
+    "nom": "Marjane Ménara – Station Recharge",
+    "lat": 31.621931,
+    "lon": -8.044003,
+    "type": "Rapide",
+    "puissance_kW": 50,
+    "operateur": "Marjane"
+  },
+  {
+    "id": "R002",
+    "nom": "Marjane Massira – Parking",
+    "lat": 31.638715,
+    "lon": -8.012941,
+    "type": "Standard",
+    "puissance_kW": 22,
+    "operateur": "Marjane"
+  },
+  {
+    "id": "R003",
+    "nom": "Station Afriquia Semlalia – EV Charger",
+    "lat": 31.639477,
+    "lon": -8.020667,
+    "type": "Rapide",
+    "puissance_kW": 60,
+    "operateur": "Afriquia"
+  },
+  {
+    "id": "R004",
+    "nom": "Parking Carré Eden – Gueliz",
+    "lat": 31.635503,
+    "lon": -8.010392,
+    "type": "Standard",
+    "puissance_kW": 11,
+    "operateur": "Chargemap"
+  },
+  {
+    "id": "R005",
+    "nom": "Mohamed VI – Station Hyatt Regency",
+    "lat": 31.621115,
+    "lon": -8.005753,
+    "type": "Rapide",
+    "puissance_kW": 50,
+    "operateur": "Hyatt"
+  },
+  {
+    "id": "R006",
+    "nom": "Marrakech Plaza – Parking Souterrain",
+    "lat": 31.633227,
+    "lon": -8.008014,
+    "type": "Standard",
+    "puissance_kW": 7,
+    "operateur": "Private"
+  },
+  {
+    "id": "R007",
+    "nom": "Station Total – Avenue Hassan II",
+    "lat": 31.637876,
+    "lon": -8.016501,
+    "type": "Rapide",
+    "puissance_kW": 50,
+    "operateur": "TotalEnergies"
+  },
+  {
+    "id": "R008",
+    "nom": "Station Afriquia Route de Casablanca",
+    "lat": 31.653817,
+    "lon": -7.997046,
+    "type": "Rapide",
+    "puissance_kW": 60,
+    "operateur": "Afriquia"
+  },
+  {
+    "id": "R009",
+    "nom": "Menara Mall – Parking 1",
+    "lat": 31.613847,
+    "lon": -8.017183,
+    "type": "Standard",
+    "puissance_kW": 22,
+    "operateur": "Menara Mall"
+  },
+  {
+    "id": "R010",
+    "nom": "Marrakech Railway Station (ONCF)",
+    "lat": 31.628140,
+    "lon": -8.012984,
+    "type": "Rapide",
+    "puissance_kW": 50,
+    "operateur": "ONCF"
+  },
+  {
+    "id": "R011",
+    "nom": "Gueliz – Parking Municipal",
+    "lat": 31.632415,
+    "lon": -8.015271,
+    "type": "Standard",
+    "puissance_kW": 11,
+    "operateur": "Municipalité"
+  },
+  {
+    "id": "R012",
+    "nom": "IKEA Marrakech – Recharge Client",
+    "lat": 31.670571,
+    "lon": -7.939641,
+    "type": "Rapide",
+    "puissance_kW": 150,
+    "operateur": "IKEA"
+  },
+  {
+    "id": "R013",
+    "nom": "Aéroport Marrakech Menara – Parking P2",
+    "lat": 31.601876,
+    "lon": -8.021231,
+    "type": "Rapide",
+    "puissance_kW": 50,
+    "operateur": "ONDA"
+  },
+  {
+    "id": "R014",
+    "nom": "Palmeraie – Station Recharge Hivernage",
+    "lat": 31.660512,
+    "lon": -7.981777,
+    "type": "Standard",
+    "puissance_kW": 11,
+    "operateur": "Private"
+  },
+  {
+    "id": "R015",
+    "nom": "Sidi Ghanem – Parking Usine",
+    "lat": 31.668710,
+    "lon": -8.047921,
+    "type": "Standard",
+    "puissance_kW": 7,
+    "operateur": "Zone Industrielle"
+  }
+]

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Delivery - Accueil</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <style>
+    html {
+      scroll-behavior: smooth;
+    }
+
+    .btn-secondary {
+      background-color: #444;
+      transition: 0.3s;
+    }
+
+    .btn-secondary:hover {
+      background-color: #222;
+      transform: translateY(-2px);
+    }
+
+    .hero {
+      text-align: center;
+      padding: 80px 20px;
+    }
+
+    .hero .subtitle {
+      font-size: 20px;
+      color: #ffffff;
+    }
+
+    .hero .description {
+      max-width: 600px;
+      margin: auto;
+      color: #ffffff;
+      margin-bottom: 20px;
+    }
+
+    .demo-section {
+      padding: 60px 0;
+      background: #f8f9fa;
+      border-top: 1px solid #eee;
+    }
+
+    .demo-form {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .loading {
+      font-size: 18px;
+      color: #007bff;
+      padding: 20px;
+    }
+
+    .success {
+      color: green;
+      padding: 20px;
+      font-size: 18px;
+    }
+
+    .error {
+      color: red;
+      padding: 20px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <i class="fas fa-truck"></i>
+        <span>Smart Delivery</span>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="/" class="active">Accueil</a></li>
+         <li><a href="/login">Connexion</a></li>
+      </ul>
+    </div>
+  </nav>
+
+
+  <!-- ================= HERO ================= -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1>🚚 Smart Delivery</h1>
+      <p class="subtitle">Système Intelligent d'Optimisation des Livraisons</p>
+
+      <p class="description">
+        Optimisez vos tournées grâce à l’IA : moins de distance, moins de coûts, plus d'efficacité.
+      </br>
+      </p>
+
+      <div class="hero-buttons">
+        <button class="btn btn-secondary" onclick="scrollToFeatures()">
+          <i class="fas fa-play"></i>  Voir les Fonctionnalités
+        </button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ================= FONCTIONNALITÉS ================= -->
+  <section class="features" id = "features">
+    <div class="container">
+      <h2>✨ Fonctionnalités</h2>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-route"></i></div>
+          <h3>Optimisation des Trajets</h3>
+          <p>Algorithmes avancés pour réduire distance et temps.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-users"></i></div>
+          <h3>Affectation Intelligente</h3>
+          <p>Répartition optimale des commandes par livreur.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-clock"></i></div>
+          <h3>Respect des Contraintes</h3>
+          <p>Fenêtres horaires, capacités, disponibilité.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-map-marked-alt"></i></div>
+          <h3>Carte Interactive</h3>
+          <p>Visualisation des trajets en direct.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-bell"></i></div>
+          <h3>Notifications</h3>
+          <p>Alertes automatiques pour les retards et incidents.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-chart-bar"></i></div>
+          <h3>Analytics & Rapports</h3>
+          <p>Statistiques détaillées et exports CSV/JSON.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2024 Smart Delivery - Projet d'Optimisation</p>
+    </div>
+  </footer>
+
+
+  <!-- ================= JS ================= -->
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+<script>
+    function scrollToFeatures() {
+        document.getElementById("features").scrollIntoView({ behavior: "smooth" });
+    }
+</script>
+
+
+</body>
+
+</html>

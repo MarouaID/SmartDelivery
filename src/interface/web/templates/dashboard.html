@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard – Comparaison Métaheuristiques</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{ background:#f5f7fb; }
+
+/* ===== LAYOUT ===== */
+.page{ max-width:1400px; margin:auto; padding:25px; }
+
+/* ===== HEADER ===== */
+.header{
+    display:flex; justify-content:space-between; align-items:center;
+    background:white; padding:20px 30px;
+    border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+.header h1{ margin:0; font-size:24px; }
+
+/* ===== CARDS ===== */
+.cards{
+    margin-top:25px;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+}
+.card{
+    background:white; padding:18px;
+    border-radius:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,.06);
+    display:flex; gap:15px; align-items:center;
+}
+.card i{ font-size:28px; color:#0d6efd; }
+.card h3{ margin:0; font-size:20px; }
+.card span{ color:#777; font-size:13px; }
+
+/* ===== SECTIONS ===== */
+.section{
+    background:white; margin-top:30px; padding:25px;
+    border-radius:16px; box-shadow:0 10px 35px rgba(0,0,0,.07);
+}
+.section h2{ margin:0 0 15px 0; font-size:20px; }
+
+/* ===== TABLE ===== */
+.data-table{ width:100%; border-collapse:collapse; }
+.data-table th{
+    background:#f1f4ff;
+    padding:12px; font-size:14px;
+}
+.data-table td{
+    padding:12px; text-align:center;
+    border-bottom:1px solid #eee; font-size:14px;
+}
+
+/* ===== BADGES ===== */
+.badge{
+    padding:4px 10px; border-radius:8px;
+    font-size:12px; font-weight:bold;
+}
+.best{ background:#d1f7d6; color:#198754; }
+.worse{ background:#ffe0e0; color:#dc3545; }
+
+/* ===== SELECT ===== */
+.select-row{
+    display:flex; gap:15px; align-items:center;
+    margin-bottom:15px;
+}
+select{
+    padding:8px 12px;
+    border-radius:8px;
+    border:1px solid #ccc;
+}
+
+/* ===== CHARTS ===== */
+.charts{
+    margin-top:30px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:25px;
+}
+.chart-box{
+    background:white;
+    padding:18px;
+    border-radius:16px;
+    box-shadow:0 8px 28px rgba(0,0,0,.07);
+}
+
+/* ===== BUTTON ===== */
+button.primary{
+    background:#0d6efd; color:white;
+    border:none; padding:10px 18px;
+    border-radius:10px; cursor:pointer;
+}
+button.primary:hover{ background:#0b5ed7; }
+</style>
+</head>
+
+<body>
+
+<nav class="navbar">
+ <div class="nav-container">
+  <div class="logo"><i class="fas fa-truck"></i><span>Smart Delivery</span></div>
+  <ul class="nav-menu">
+   <li><a href="/dashboard" class="active">Dashboard</a></li>
+   <li><a href="/carte">Carte</a></li>
+   <li><a href="/livreurs">Livreurs</a></li>
+   <li><a href="/commandes">Commandes</a></li>
+   <li><button class="primary" onclick="window.location='/logout'">
+        <i class="fas fa-sign-out-alt"></i>
+   </button></li>
+  </ul>
+ </div>
+</nav>
+
+<div class="page">
+
+<!-- HEADER -->
+<div class="header">
+    <h1>📊 Comparaison des Métaheuristiques</h1>
+    <button class="primary" onclick="lancerOptimisation()">🚀 Lancer Affectation / Trajets</button>
+</div>
+
+<!-- STATS -->
+<div class="cards">
+    <div class="card"><i class="fas fa-users"></i>
+        <div><h3 id="s-livreurs">0</h3><span>Livreurs</span></div>
+    </div>
+    <div class="card"><i class="fas fa-box"></i>
+        <div><h3 id="s-commandes">0</h3><span>Commandes</span></div>
+    </div>
+    <div class="card"><i class="fas fa-route"></i>
+        <div><h3 id="s-distance">0 km</h3><span>Distance GA</span></div>
+    </div>
+    <div class="card"><i class="fas fa-euro-sign"></i>
+        <div><h3 id="s-cost">0 €</h3><span>Coût GA</span></div>
+    </div>
+</div>
+
+<!-- COMPARISON -->
+<div class="section">
+<h2>🧠 Comparaison des Algorithmes (Distance estimée)</h2>
+<table class="data-table">
+<thead>
+<tr><th>Algorithme</th><th>Distance (km)</th><th>Écart vs GA</th></tr>
+</thead>
+<tbody id="algo-compare"></tbody>
+</table>
+</div>
+
+<!-- ROUTES -->
+<div class="section">
+<h2>🚚 Trajets par Algorithme</h2>
+
+<div class="select-row">
+    <label>Algorithme :</label>
+    <select id="algoSelect"></select>
+</div>
+
+<table class="data-table">
+<thead>
+<tr>
+<th>Livreur</th>
+<th>Distance (km)</th>
+<th>Temps (min)</th>
+<th>Coût (€)</th>
+</tr>
+</thead>
+<tbody id="trajets-body"></tbody>
+</table>
+</div>
+
+<!-- CHARTS -->
+<div class="charts">
+<div class="chart-box">
+<h3>📦 Commandes par Livreur</h3>
+<canvas id="chartCmd" height="160"></canvas>
+</div>
+<div class="chart-box">
+<h3>⏱️ Durée par Livreur (GA)</h3>
+<canvas id="chartTime" height="160"></canvas>
+</div>
+</div>
+
+</div>
+
+<script>
+let RAW, chart1, chart2;
+
+async function lancerOptimisation(){
+    await fetch("/api/optimiser",{method:"POST"});
+    charger();
+}
+
+async function charger(){
+    const r = await fetch("/api/resultat");
+    RAW = await r.json();
+    if(!RAW.success) return;
+
+    const routes = RAW.trajets_optimises.routes;
+
+    document.getElementById("s-livreurs").textContent = Object.keys(routes).length;
+    document.getElementById("s-commandes").textContent =
+        Object.values(RAW.affectations).reduce((a,b)=>a+b.length,0);
+
+    let gaDistance=0, gaCost=0;
+    Object.values(routes).forEach(r=>{
+        gaDistance += r.distance_km||0;
+        gaCost += r.cost||0;
+    });
+
+    document.getElementById("s-distance").textContent = gaDistance.toFixed(2)+" km";
+    document.getElementById("s-cost").textContent = gaCost.toFixed(2)+" €";
+
+    const totals={};
+    Object.values(routes).forEach(r=>{
+        Object.entries(r.meta_solutions).forEach(([a,s])=>{
+            totals[a]=(totals[a]||0)+s.distance_estimee;
+        });
+    });
+
+    const tbody=document.getElementById("algo-compare");
+    tbody.innerHTML="";
+    const ga=totals.genetic;
+    Object.entries(totals).forEach(([a,d])=>{
+        const diff=a==="genetic"?"BEST":(((d-ga)/ga)*100).toFixed(1)+" %";
+        tbody.innerHTML+=`
+        <tr>
+            <td>${a}</td>
+            <td>${d.toFixed(2)}</td>
+            <td>${a==="genetic"?
+                '<span class="badge best">BEST</span>':
+                '<span class="badge worse">'+diff+'</span>'}</td>
+        </tr>`;
+    });
+
+    const sel=document.getElementById("algoSelect");
+    sel.innerHTML="";
+    Object.keys(totals).forEach(a=>sel.innerHTML+=`<option value="${a}">${a}</option>`);
+    sel.onchange=()=>renderAlgo(sel.value);
+    renderAlgo("genetic");
+}
+
+function renderAlgo(algo){
+    const body=document.getElementById("trajets-body");
+    body.innerHTML="";
+    const labels=[],cmds=[],times=[];
+
+    Object.entries(RAW.trajets_optimises.routes).forEach(([liv,r])=>{
+        const sol=r.meta_solutions[algo];
+        if(!sol) return;
+        const isGA=algo==="genetic";
+        body.innerHTML+=`
+        <tr>
+            <td>${liv}</td>
+            <td>${sol.distance_estimee.toFixed(2)}</td>
+            <td>${isGA?r.duree_min:"—"}</td>
+            <td>${isGA?r.cost.toFixed(2):"—"}</td>
+        </tr>`;
+        labels.push(liv);
+        cmds.push(r.ordre_livraison.length);
+        times.push(isGA?r.duree_min:0);
+    });
+
+    drawCharts(labels,cmds,times);
+}
+
+function drawCharts(l,c,t){
+    if(chart1) chart1.destroy();
+    if(chart2) chart2.destroy();
+
+    chart1=new Chart(chartCmd,{
+        type:"bar",
+        data:{labels:l,datasets:[{label:"Commandes",data:c}]}
+    });
+
+    chart2=new Chart(chartTime,{
+        type:"line",
+        data:{labels:l,datasets:[{label:"Temps (min)",data:t}]}
+    });
+}
+
+charger();
+</script>
+
+</body>
+</html>

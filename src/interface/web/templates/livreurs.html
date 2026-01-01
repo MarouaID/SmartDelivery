@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Livreurs</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+
+  <style>
+    .page-header{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:20px;
+    }
+
+    table{
+        width:100%;
+        border-collapse:collapse;
+        background:white;
+        border-radius:10px;
+        overflow:hidden;
+    }
+
+    th,td{
+        padding:12px;
+        text-align:center;
+        border-bottom:1px solid #eee;
+    }
+
+    th{ background:#007bff; color:white; }
+    tr:hover{ background:#f5f5f5; }
+
+    .btn-add{ padding:10px 15px; background:#007bff; color:white; border-radius:6px; cursor:pointer; }
+    .action-btn{ padding:6px 10px; border-radius:6px; color:white; cursor:pointer; }
+    .delete{ background:#e63946; }
+
+    .form-overlay{
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.55);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    }
+
+    .form-popup, .result-box{
+        background:white;
+        padding:20px;
+        border-radius:12px;
+        width:620px;
+        max-height:90vh;
+        overflow-y:auto;
+        box-shadow:0 10px 40px rgba(0,0,0,0.45);
+    }
+
+    .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    input,select{ padding:8px; width:100%; }
+
+    .btn-save{ background:#28a745; padding:10px; color:white; width:100%; border-radius:6px; margin-top:15px; cursor:pointer; }
+    .btn-close{ background:#222; padding:8px; margin-top:10px; color:white; width:100%; border-radius:6px; cursor:pointer; }
+
+    .result-title{ color:#007bff; font-size:22px; margin-bottom:10px; }
+    .result-content{ background:#f4f7ff; padding:15px; border-radius:10px; border:1px solid #cfdcff; }
+
+    .logout-btn{ padding:10px 18px; border-radius:8px; background:#e63946; color:white; border:none; cursor:pointer; }
+  </style>
+</head>
+
+<body>
+
+<nav class="navbar">
+ <div class="nav-container">
+  <div class="logo"><i class="fas fa-box"></i><span>Smart Delivery</span></div>
+
+  <ul class="nav-menu">
+   <li><a href="/dashboard">Dashboard</a></li>
+   <li><a href="/carte">Carte</a></li>
+   <li><a href="/livreurs" class="active">Livreurs</a></li>
+   <li><a href="/commandes">Commandes</a></li>
+   <li>
+      <button class="logout-btn" onclick="window.location='/logout'">
+        <i class="fas fa-sign-out-alt"></i> Déconnexion
+      </button>
+    </li>
+  </ul>
+ </div>
+</nav>
+
+<section class="container">
+
+<div class="page-header">
+    <h2>🚚 Gestion des Livreurs</h2>
+    <button class="btn-add" onclick="ouvrirForm()"> + Ajouter un Livreur</button>
+</div>
+
+<table>
+<thead>
+<tr>
+    <th>ID</th><th>Nom</th><th>Véhicule</th><th>Capacité</th>
+    <th>Horaires</th><th>Vitesse</th><th>Dispo</th><th>Contact</th><th>Action</th>
+</tr>
+</thead>
+<tbody id="table-body"></tbody>
+</table>
+
+<!-- ADD LIVREUR -->
+<div class="form-overlay" id="popup">
+<div class="form-popup">
+<h3>Ajouter un Livreur</h3>
+
+<div class="form-grid">
+<input id="id" placeholder="LIV1">
+<input id="nom" placeholder="Nom complet">
+<select id="vehicule">
+    <option value="">-- Véhicule --</option>
+    <option value="SCOOTER">Scooter</option>
+    <option value="VAN">Van</option>
+    <option value="TRUCK">Camion</option>
+</select>
+<input id="speed" type="number" placeholder="Vitesse km/h">
+<input id="h1" type="time">
+<input id="h2" type="time">
+<input id="cout" type="number" step="0.1" placeholder="Coût / km">
+<input id="tel" placeholder="Téléphone">
+<input id="email" type="email" placeholder="Email">
+</div>
+
+<button class="btn-save" onclick="enregistrer()">Enregistrer</button>
+<button class="btn-close" onclick="fermerAdd()">Fermer</button>
+</div>
+</div>
+
+<!-- RESULT POPUP -->
+<div class="form-overlay" id="result-popup">
+<div class="result-box">
+<h3 class="result-title">🎉 Livreur créé</h3>
+<div id="result-content" class="result-content"></div>
+<button class="btn-close" onclick="fermerResult()">Fermer</button>
+</div>
+</div>
+
+</section>
+
+<script>
+function capaciteFromVehicule(v){
+    return v==="SCOOTER"?30:v==="VAN"?300:v==="TRUCK"?3000:0;
+}
+
+function ouvrirForm(){ popup.style.display="flex"; }
+function fermerAdd(){ popup.style.display="none"; }
+function fermerResult(){ resultPopup.style.display="none"; }
+
+async function enregistrer(){
+
+    const v = vehicule.value;
+
+    const data = {
+        id: id.value,
+        nom: nom.value,
+        type_vehicule: v,
+        capacite_poids: capaciteFromVehicule(v),
+        latitude_depart: 31.646983,
+        longitude_depart: -8.020713,
+        heure_debut: h1.value,
+        heure_fin: h2.value,
+        vitesse_moyenne: speed.value,
+        cout_km: cout.value,
+        telephone: tel.value,
+        email: email.value
+    };
+
+    const res = await fetch("/api/livreurs",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json"},
+        body:JSON.stringify(data)
+    });
+
+    const result = await res.json();
+
+    if(!result.success){
+        alert("Erreur création livreur");
+        return;
+    }
+
+    document.getElementById("result-content").innerHTML = `
+        <p><b>Email :</b> <span style="color:#007bff">${result.login_email}</span></p>
+        <p><b>Mot de Passe :</b>
+            <span style="font-size:20px;color:#007bff;">${result.password}</span>
+        </p>
+        <p style="color:red;">⚠️ Sauvegarde ce mot de passe (affiché une seule fois)</p>
+    `;
+
+    fermerAdd();
+    resultPopup.style.display="flex";
+    chargerLivreurs();
+}
+
+async function chargerLivreurs(){
+    const r = await fetch("/api/livreurs");
+    const data = await r.json();
+    tableBody.innerHTML="";
+
+    data.forEach(l=>{
+        tableBody.innerHTML += `
+        <tr>
+            <td>${l.id}</td>
+            <td>${l.nom}</td>
+            <td>${l.type_vehicule}</td>
+            <td>${l.capacite_poids} kg</td>
+            <td>${l.heure_debut} → ${l.heure_fin}</td>
+            <td>${l.vitesse_moyenne}</td>
+            <td>${l.disponible?"✅":"❌"}</td>
+            <td>${l.telephone}</td>
+            <td><button class="action-btn delete" onclick="deleteLivreur('${l.id}')">Supprimer</button></td>
+        </tr>`;
+    });
+}
+
+async function deleteLivreur(id){
+    if(!confirm("Supprimer ce livreur ?")) return;
+    await fetch("/api/livreurs/"+id,{method:"DELETE"});
+    chargerLivreurs();
+}
+
+const popup = document.getElementById("popup");
+const resultPopup = document.getElementById("result-popup");
+const tableBody = document.getElementById("table-body");
+
+chargerLivreurs();
+</script>
+
+</body>
+</html>
