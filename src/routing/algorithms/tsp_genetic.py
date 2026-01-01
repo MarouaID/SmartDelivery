@@ -32,14 +32,13 @@ def haversine_km(a: Tuple[float, float], b: Tuple[float, float]) -> float:
 # =========================
 @dataclass
 class GAConfig:
-    population_size: int = 25
-    generations: int = 120
-    elite_ratio: float = 0.10
-    mutation_rate: float = 0.15
-    tournament_k: int = 3
-    # “secouer” un peu pour éviter stagnation
-    random_immigrants_ratio: float = 0.04
-    seed: Optional[int] = None
+    population_size: int = 35       # légèrement plus grand que 25 pour plus de diversité, mais pas 80 car une population trop grande ralentirait fortement l'exécution sans gain significatif pour des clusters de taille modérée
+    generations: int = 150          # un peu plus de générations pour meilleure convergence
+    elite_ratio: float = 0.10       # conserver les meilleurs 10% à chaque génération
+    mutation_rate: float = 0.15     # mutation raisonnable pour éviter stagnation
+    tournament_k: int = 3           # taille du tournoi pour la sélection
+    random_immigrants_ratio: float = 0.05  # introduit de nouvelles solutions pour explorer
+    seed: Optional[int] = 42        # seed pour reproductibilité
 
 
 
