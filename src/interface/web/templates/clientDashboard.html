@@ -158,8 +158,6 @@ tr:hover{
                     <th>ID</th>
                     <th>Adresse</th>
                     <th>Poids</th>
-                    <th>Volume</th>
-                    <th>Fenêtre</th>
                     <th>Priorité</th>
                     <th>Statut</th>
                 </tr>
@@ -204,8 +202,6 @@ async function chargerCommandes(){
                 <td>${c.id}</td>
                 <td>${c.adresse}</td>
                 <td>${c.poids} kg</td>
-                <td>${c.volume}</td>
-                <td>${c.fenetre_debut} → ${c.fenetre_fin}</td>
                 <td>${c.priorite}</td>
                 <td>
                     <span class="status ${c.statut}">

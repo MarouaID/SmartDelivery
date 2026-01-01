@@ -1,27 +1,24 @@
 from typing import List, Dict, Tuple
-import math
 import random
-from collections import defaultdict
 from copy import deepcopy
 
 from src.models import Commande, Livreur
 from src.utils import DistanceCalculator
-from src.contraintes.regles.capacites import ValidateurCapacites
-from src.contraintes.regles.horaires import ValidateurHoraires
-from src.contraintes.regles.meteo import ValidateurMeteo
 
 
 class AffectationManager:
+    """
+    Affectation robuste et explicable.
+    Contraintes réelles uniquement : POIDS + DISTANCE + PRIORITÉ.
+    """
+
     def __init__(self, use_clustering: bool = True, random_seed: int = 42):
         self.dist = DistanceCalculator()
-        self.cap_validator = ValidateurCapacites()
-        self.horaire_validator = ValidateurHoraires()
-        self.meteo_validator = ValidateurMeteo()
         self.use_clustering = use_clustering
         random.seed(random_seed)
 
     # =====================================================
-    # K-MEANS léger (lat/lon)
+    # SIMPLE K-MEANS (lat/lon)
     # =====================================================
     def _kmeans(self, points: List[Tuple[float, float]], k: int, iters: int = 10):
         if k <= 0 or not points:
@@ -54,6 +51,9 @@ class AffectationManager:
 
         return centroids
 
+    # =====================================================
+    # CLUSTER COMMANDES
+    # =====================================================
     def clusteriser_commandes(
         self, commandes: List[Commande], k: int
     ) -> List[List[Commande]]:
@@ -78,90 +78,82 @@ class AffectationManager:
         return [cl for cl in clusters if cl]
 
     # =====================================================
-    # Coût simple
+    # CAPACITY CHECK (POIDS UNIQUEMENT)
     # =====================================================
-    def _cout_slot_cmd(
-        self, origin: Tuple[float, float], cmd: Commande, scenario: str
-    ) -> float:
-
-        d = self.dist.haversine(origin[0], origin[1], cmd.latitude, cmd.longitude)
-        penalite = {1: 0, 2: 2, 3: 5}.get(cmd.priorite, 2)
-        coeff = {"normal": 1.0, "pic": 1.3, "incident": 1.7}.get(scenario, 1.0)
-        return d + penalite * coeff
-
-    # =====================================================
-    # Création des slots
-    # =====================================================
-    def _create_slots(self, livreurs: List[Livreur], n: int) -> List[Dict]:
-        slots = []
-        for l in livreurs:
-            for i in range(n):
-                slots.append({
-                    "livreur": l,
-                    "slot_id": f"{l.id}_S{i+1}",
-                    "lat": l.latitude_depart,
-                    "lon": l.longitude_depart
-                })
-        return slots
+    def _can_add(
+        self,
+        livreur: Livreur,
+        current_cmds: List[Commande],
+        cmd: Commande
+    ) -> bool:
+        total_poids = sum(c.poids for c in current_cmds) + cmd.poids
+        return total_poids <= livreur.capacite_poids
 
     # =====================================================
-    # Matching greedy
+    # SCORE LIVREUR ↔ COMMANDE
     # =====================================================
-    def _match_slots_greedy(
-        self, slots: List[Dict], commandes: List[Commande], scenario: str
-    ):
-        affect = defaultdict(list)
-        used = set()
+    def _score(self, livreur: Livreur, commande: Commande) -> float:
+        if not livreur.disponible:
+            return -1.0
 
-        pairs = []
-        for s in slots:
-            for c in commandes:
-                cost = self._cout_slot_cmd(
-                    (s["lat"], s["lon"]), c, scenario
+        # Distance (km)
+        d = self.dist.haversine(
+            livreur.latitude_depart,
+            livreur.longitude_depart,
+            commande.latitude,
+            commande.longitude
+        )
+
+        score_distance = 1.0 / (1.0 + d)
+
+        # Priorité : 1 → 1.0 | 3 → 0.33
+        score_priorite = (4 - commande.priorite) / 3.0
+
+        return 0.6 * score_distance + 0.4 * score_priorite
+
+    # =====================================================
+    # TSP GREEDY (ORDER DELIVERY)
+    # =====================================================
+    def _tsp_greedy(
+        self,
+        livreur: Livreur,
+        commandes: List[Commande]
+    ) -> List[Commande]:
+
+        if not commandes:
+            return []
+
+        remaining = commandes[:]
+        ordered = []
+        cur_lat, cur_lon = livreur.latitude_depart, livreur.longitude_depart
+
+        while remaining:
+            nxt = min(
+                remaining,
+                key=lambda c: self.dist.haversine(
+                    cur_lat, cur_lon,
+                    c.latitude, c.longitude
                 )
-                pairs.append((cost, s, c))
-
-        pairs.sort(key=lambda x: x[0])
-
-        for _, slot, cmd in pairs:
-            if cmd.id in used:
-                continue
-
-            liv = slot["livreur"]
-            ok_cap, _ = self.cap_validator.verifier_ajout_commande(
-                liv, affect[liv.id], cmd
             )
-            if not ok_cap:
-                continue
+            ordered.append(nxt)
+            remaining.remove(nxt)
+            cur_lat, cur_lon = nxt.latitude, nxt.longitude
 
-            ok_m, _ = self.meteo_validator.valider_conditions(
-                [(cmd.latitude, cmd.longitude)]
-            )
-            if not ok_m:
-                continue
-
-            ok_h, _ = self.horaire_validator.valider_disponibilite_livreur(
-                liv, liv.heure_debut
-            )
-            if not ok_h:
-                continue
-
-            affect[liv.id].append(cmd)
-            used.add(cmd.id)
-
-        unassigned = [c for c in commandes if c.id not in used]
-        return affect, unassigned
+        return ordered
 
     # =====================================================
-    # Distance estimée
+    # DISTANCE ESTIMÉE TOTALE
     # =====================================================
     def _distance_total_estime(
-        self, affect: Dict[str, List[Commande]], livreurs: List[Livreur]
+        self,
+        affectations: Dict[str, List[Commande]],
+        livreurs: List[Livreur]
     ) -> float:
 
         total = 0.0
+
         for l in livreurs:
-            cmds = affect.get(l.id, [])
+            cmds = affectations.get(l.id, [])
             if not cmds:
                 continue
 
@@ -173,15 +165,17 @@ class AffectationManager:
             for i in range(len(cmds) - 1):
                 total += self.dist.haversine(
                     cmds[i].latitude, cmds[i].longitude,
-                    cmds[i+1].latitude, cmds[i+1].longitude
+                    cmds[i + 1].latitude, cmds[i + 1].longitude
                 )
+
         return total
 
     # =====================================================
-    # PIPELINE PRINCIPAL
+    # MAIN AFFECTATION PIPELINE
     # =====================================================
     def affecter_hybrid(
-        self, livreurs: List[Livreur],
+        self,
+        livreurs: List[Livreur],
         commandes: List[Commande],
         scenario: str = "normal"
     ) -> Dict:
@@ -197,43 +191,52 @@ class AffectationManager:
         livreurs_c = deepcopy(livreurs)
         commandes_c = deepcopy(commandes)
 
-        k = min(max(1, len(commandes_c) // 8 + 1), len(livreurs_c))
+        k = min(max(1, len(commandes_c) // 20), len(livreurs_c))
         clusters = self.clusteriser_commandes(commandes_c, k)
 
-        final_affect = {l.id: [] for l in livreurs_c}
-        leftover = []
+        affectations: Dict[str, List[Commande]] = {l.id: [] for l in livreurs_c}
+        assigned_ids = set()
 
-        for cl in clusters:
-            slots = self._create_slots(
-                livreurs_c, max(1, math.ceil(len(cl) / len(livreurs_c)))
-            )
-            aff, rest = self._match_slots_greedy(slots, cl, scenario)
+        # ========= GREEDY ASSIGNMENT =========
+        for cluster in clusters:
+            for c in cluster:
+                best_l = None
+                best_score = -1.0
 
-            for lid, cmds in aff.items():
-                final_affect[lid].extend(cmds)
+                for l in livreurs_c:
+                    if not self._can_add(l, affectations[l.id], c):
+                        continue
 
-            leftover.extend(rest)
+                    s = self._score(l, c)
+                    if s > best_score:
+                        best_score = s
+                        best_l = l
 
-        # 🔐 FALLBACK GARANTI (démo / UI / carte)
-        if all(len(v) == 0 for v in final_affect.values()):
-            for i, cmd in enumerate(commandes_c):
-                liv = livreurs_c[i % len(livreurs_c)]
-                final_affect[liv.id].append(cmd)
-            leftover = []
+                if best_l:
+                    affectations[best_l.id].append(c)
+                    assigned_ids.add(c.id)
 
-        total_cost = self._distance_total_estime(final_affect, livreurs_c)
+        # ========= ORDER ROUTES =========
+        for l in livreurs_c:
+            affectations[l.id] = self._tsp_greedy(l, affectations[l.id])
+
+        non_affectees = [c for c in commandes_c if c.id not in assigned_ids]
+        total_cost = self._distance_total_estime(affectations, livreurs_c)
 
         return {
-            "affectations": final_affect,
-            "non_affectees": leftover,
-            "total_cost": round(total_cost, 4),
-            "score_global": 1.0 / (1.0 + total_cost)
+            "affectations": affectations,
+            "non_affectees": non_affectees,
+            "total_cost": round(total_cost, 3),
+            "score_global": round(1.0 / (1.0 + total_cost), 6)
         }
 
     # =====================================================
-    # COMPATIBILITÉ API EXISTANTE
+    # BACKWARD COMPATIBILITY
     # =====================================================
     def affecter_commandes_branch_and_bound(
-        self, livreurs, commandes, scenario="normal"
+        self,
+        livreurs: List[Livreur],
+        commandes: List[Commande],
+        scenario: str = "normal"
     ):
         return self.affecter_hybrid(livreurs, commandes, scenario)

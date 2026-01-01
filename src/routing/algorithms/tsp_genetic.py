@@ -32,14 +32,17 @@ def haversine_km(a: Tuple[float, float], b: Tuple[float, float]) -> float:
 # =========================
 @dataclass
 class GAConfig:
-    population_size: int = 80
-    generations: int = 250
-    elite_ratio: float = 0.12
-    mutation_rate: float = 0.20
-    tournament_k: int = 4
+    population_size: int = 25
+    generations: int = 120
+    elite_ratio: float = 0.10
+    mutation_rate: float = 0.15
+    tournament_k: int = 3
     # “secouer” un peu pour éviter stagnation
-    random_immigrants_ratio: float = 0.08
+    random_immigrants_ratio: float = 0.04
     seed: Optional[int] = None
+
+
+
 
 
 # =========================
